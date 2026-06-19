@@ -16,6 +16,7 @@
   },
   "dependencies": {
     "better-sqlite3": "^11.8.1",
-    "nats": "^2.29.3"
+    "nats": "^2.29.3",
+    "playwright-core": "^1.49.0"
   }
 }
