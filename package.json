@@ -1,0 +1,21 @@
+{
+  "name": "crossfade",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "description": "A personal Suno radio station — seed influences as a graph, let a DJ combine them into songs.",
+  "bin": {
+    "crossfade": "./bin/crossfade.mjs"
+  },
+  "scripts": {
+    "test": "node --test",
+    "start": "node ./bin/crossfade.mjs"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "better-sqlite3": "^11.8.1",
+    "nats": "^2.29.3"
+  }
+}

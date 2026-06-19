@@ -1,0 +1,15 @@
+# dependencies
+node_modules/
+
+# local database (the harness's system of record lives outside git)
+*.db
+*.db-journal
+*.db-shm
+*.db-wal
+
+# secrets / env — root and nested (covers suno-api/.env)
+.env
+**/.env
+
+# build output
+.next/
