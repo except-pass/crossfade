@@ -19,7 +19,10 @@ export const config = {
   // are kept here so the generation layer (U4) can settle without touching the
   // rest of the harness. Neither is exercised by the foundation units (U2/U3).
   sunoApi: env.SUNO_API || "http://localhost:4789", // suno-api HTTP wrapper (spike path)
-  cdpUrl: env.CDP_URL || "http://localhost:9223", // Chrome DevTools endpoint (browser path)
+  // Use 127.0.0.1, NOT localhost — `localhost` resolves to IPv6 ::1 and misses the
+  // IPv4 CDP tunnel (CDP-PLUMBING.md gotcha #3). 9223 is the documented owned tunnel;
+  // override with CDP_URL when the live path differs (e.g. the 9222 tailscaled path).
+  cdpUrl: env.CDP_URL || "http://127.0.0.1:9223", // Chrome DevTools endpoint (browser path)
 
   // --- DJ transport + control plane (U6/U7) ---
   natsUrl: env.NATS_URL || "nats://127.0.0.1:4222",
