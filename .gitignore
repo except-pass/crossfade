@@ -13,3 +13,6 @@ node_modules/
 
 # build output
 .next/
+
+# vendored third-party clone (gcui-art/suno-api) — has its own git history
+suno-api/

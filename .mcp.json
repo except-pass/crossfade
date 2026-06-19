@@ -1,0 +1,17 @@
+{
+  "mcpServers": {
+    "nats": {
+      "command": "/home/ubuntu/.bun/bin/bun",
+      "args": [
+        "x",
+        "github:except-pass/nats-channel-mcp",
+        "--name",
+        "${TINSTAR_SESSION_NAME}",
+        "--topics-file",
+        "${TINSTAR_NATS_TOPICS_FILE}",
+        "--control-socket",
+        "${TINSTAR_NATS_CONTROL_SOCKET}"
+      ]
+    }
+  }
+}
