@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { openStore, normalize, comboSignature } from "../src/store.mjs";
+import { openStore, normalize, comboSignature, ROLES } from "../src/store.mjs";
 
 function freshStore() {
   return openStore(":memory:");
@@ -20,28 +20,49 @@ test("comboSignature is order-independent and dedupes", () => {
   assert.equal(comboSignature([1, 1, 2]), "1,2");
 });
 
+test("ROLES are seed | vibe | mutator", () => {
+  assert.deepEqual(ROLES, ["seed", "vibe", "mutator"]);
+});
+
+test("addNode validates role", () => {
+  const s = freshStore();
+  assert.throws(() => s.addNode("bogus", "band", "X"), /role must be one of/);
+  s.close();
+});
+
 test("node dedup: variants collapse to one node, real name preserved", () => {
   const s = freshStore();
-  const a = s.addNode("band", "a band");
-  const b = s.addNode("band", "a band "); // normalizes identically
-  assert.equal(a.id, b.id, "same normalized name -> same node");
+  const a = s.addNode("seed", "band", "a band");
+  const b = s.addNode("seed", "band", "a band "); // normalizes identically
+  assert.equal(a.id, b.id, "same role+type+normalized -> same node");
   assert.equal(s.listNodes().length, 1);
   assert.equal(s.getNode(a.id).name, "a band", "first real name is preserved");
+  assert.equal(s.getNode(a.id).role, "seed");
+  assert.equal(s.getNode(a.id).type, "band");
+  s.close();
+});
+
+test("same name under different roles are distinct nodes", () => {
+  const s = freshStore();
+  const vibe = s.addNode("vibe", "vibe", "nostalgic");
+  const theme = s.addNode("seed", "theme", "nostalgic");
+  assert.notEqual(vibe.id, theme.id, "role disambiguates identical names");
+  assert.equal(s.listNodes().length, 2);
   s.close();
 });
 
 test("empty/punctuation-only node names are rejected", () => {
   const s = freshStore();
-  assert.throws(() => s.addNode("band", "   "), /empty after normalization/);
-  assert.throws(() => s.addNode("band", "!!!"), /empty after normalization/);
+  assert.throws(() => s.addNode("seed", "band", "   "), /empty after normalization/);
+  assert.throws(() => s.addNode("mutator", "mutator", "!!!"), /empty after normalization/);
   s.close();
 });
 
 test("song persists with concept, exact inputs, clip ids/urls, and lineage", () => {
   const s = freshStore();
-  const band1 = s.addNode("band", "a band");
-  const band2 = s.addNode("band", "a band");
-  const theme = s.addNode("theme", "returning home unexpectedly");
+  const band1 = s.addNode("seed", "band", "a band");
+  const band2 = s.addNode("seed", "band", "a band");
+  const theme = s.addNode("seed", "theme", "returning home unexpectedly");
 
   const songId = s.recordSong({
     title: "The Long Way Back",
@@ -76,9 +97,9 @@ test("song persists with concept, exact inputs, clip ids/urls, and lineage", () 
 
 test("lineage queries resolve both directions", () => {
   const s = freshStore();
-  const band = s.addNode("band", "a band");
-  const theme1 = s.addNode("theme", "homecoming");
-  const theme2 = s.addNode("theme", "leaving");
+  const band = s.addNode("seed", "band", "a band");
+  const theme1 = s.addNode("seed", "theme", "homecoming");
+  const theme2 = s.addNode("seed", "theme", "leaving");
 
   const song1 = s.recordSong({ title: "A", inspirationNodeIds: [band.id, theme1.id] });
   const song2 = s.recordSong({ title: "B", inspirationNodeIds: [band.id, theme2.id] });
@@ -93,8 +114,8 @@ test("lineage queries resolve both directions", () => {
 
 test("combos reject a duplicate signature for the same node set", () => {
   const s = freshStore();
-  const a = s.addNode("band", "A");
-  const b = s.addNode("theme", "B");
+  const a = s.addNode("seed", "band", "A");
+  const b = s.addNode("seed", "theme", "B");
 
   assert.equal(s.comboExists([a.id, b.id]), false);
   s.recordSong({ title: "first", inspirationNodeIds: [a.id, b.id] });
@@ -109,7 +130,7 @@ test("combos reject a duplicate signature for the same node set", () => {
 
 test("rating stores thumb + note and re-rating updates in place", () => {
   const s = freshStore();
-  const node = s.addNode("band", "A");
+  const node = s.addNode("seed", "band", "A");
   const songId = s.recordSong({ title: "song", inspirationNodeIds: [node.id] });
 
   s.rate(songId, "up", "love the sax outro");
@@ -122,7 +143,6 @@ test("rating stores thumb + note and re-rating updates in place", () => {
   assert.equal(r.thumb, "down", "re-rating updates the thumb");
   assert.equal(r.note, "actually the lyrics are too on-the-nose");
 
-  // still a single rating row, not a duplicate
   const count = s.db.prepare("SELECT COUNT(*) c FROM ratings WHERE song_id = ?").get(songId).c;
   assert.equal(count, 1);
 
@@ -133,9 +153,9 @@ test("rating stores thumb + note and re-rating updates in place", () => {
 
 test("least-used nodes are ordered by lineage count ascending", () => {
   const s = freshStore();
-  const hot = s.addNode("band", "Hot");
-  const warm = s.addNode("band", "Warm");
-  const cold = s.addNode("theme", "Cold"); // never used
+  const hot = s.addNode("seed", "band", "Hot");
+  const warm = s.addNode("seed", "band", "Warm");
+  const cold = s.addNode("seed", "theme", "Cold"); // never used
 
   s.recordSong({ title: "s1", inspirationNodeIds: [hot.id, warm.id] });
   s.recordSong({ title: "s2", inspirationNodeIds: [hot.id] });
@@ -145,5 +165,22 @@ test("least-used nodes are ordered by lineage count ascending", () => {
   assert.equal(ranked[0].use_count, 0);
   assert.equal(ranked[ranked.length - 1].id, hot.id, "most-used node is last");
   assert.equal(ranked[ranked.length - 1].use_count, 2);
+  s.close();
+});
+
+test("nodesByRole returns nodes of one role with use_count", () => {
+  const s = freshStore();
+  const band = s.addNode("seed", "band", "A");
+  s.addNode("vibe", "vibe", "nostalgic");
+  s.addNode("vibe", "vibe", "euphoric");
+  s.recordSong({ title: "s", inspirationNodeIds: [band.id] });
+
+  const seeds = s.nodesByRole("seed");
+  assert.equal(seeds.length, 1);
+  assert.equal(seeds[0].use_count, 1);
+
+  const vibes = s.nodesByRole("vibe");
+  assert.equal(vibes.length, 2);
+  assert.ok(vibes.every((v) => v.use_count === 0));
   s.close();
 });

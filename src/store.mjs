@@ -1,20 +1,29 @@
 // The crossfade store — SQLite system of record for the inspiration graph,
 // songs, lineage, ratings, and combo history (R3, R4, R5, R10, R14, R19).
 //
-// The graph is bipartite (songs <-> inspiration nodes); "what connects to what"
-// queries are expressed as joins over song_inspirations. The store is
-// generation-mechanism-agnostic: it records the brief inputs and whatever clip
-// ids / urls a generation returns, regardless of how the song was produced.
+// Nodes carry a ROLE (seed | vibe | mutator) plus a free-text sub-type:
+//   - seed    : material/direction. Sub-types: band, album, theme. Only band/album
+//               carry real names (the name-leak guard scopes to these).
+//   - vibe    : affect/color (nostalgic, euphoric, melancholy). Optional spice.
+//   - mutator : an operation applied last (gender-swap the singer, strip the cliches).
+//
+// The graph is bipartite (songs <-> nodes); "what connects to what" queries are
+// joins over song_inspirations. The store is generation-mechanism-agnostic: it
+// records the brief inputs and whatever clip ids / urls a generation returns.
 
 import Database from "better-sqlite3";
+
+export const ROLES = ["seed", "vibe", "mutator"];
 
 const SCHEMA = `
 CREATE TABLE IF NOT EXISTS nodes (
   id              INTEGER PRIMARY KEY,
-  type            TEXT NOT NULL,                 -- open-ended: band | style | theme | mood | ... (R1)
+  role            TEXT NOT NULL,                 -- seed | vibe | mutator
+  type            TEXT NOT NULL,                 -- sub-kind: band | album | theme | vibe | mutator (R1)
   name            TEXT NOT NULL,                 -- real name, preserved for the user's graph (R2)
-  normalized_name TEXT NOT NULL UNIQUE,          -- dedup key (KTD-5)
-  created_at      TEXT NOT NULL DEFAULT (datetime('now'))
+  normalized_name TEXT NOT NULL,                 -- dedup key (KTD-5)
+  created_at      TEXT NOT NULL DEFAULT (datetime('now')),
+  UNIQUE (role, type, normalized_name)
 );
 
 CREATE TABLE IF NOT EXISTS songs (
@@ -53,6 +62,7 @@ CREATE TABLE IF NOT EXISTS combos (
 
 CREATE INDEX IF NOT EXISTS idx_insp_node ON song_inspirations(node_id);
 CREATE INDEX IF NOT EXISTS idx_insp_song ON song_inspirations(song_id);
+CREATE INDEX IF NOT EXISTS idx_nodes_role ON nodes(role);
 `;
 
 // Normalize a node name to its dedup key: lowercase, NFKC, collapse internal
@@ -91,11 +101,21 @@ export function openStore(dbPath = ":memory:") {
 
   const q = {
     insertNode: db.prepare(
-      "INSERT INTO nodes (type, name, normalized_name) VALUES (@type, @name, @normalized)"
+      "INSERT INTO nodes (role, type, name, normalized_name) VALUES (@role, @type, @name, @normalized)"
     ),
     nodeById: db.prepare("SELECT * FROM nodes WHERE id = ?"),
-    nodeByNormalized: db.prepare("SELECT * FROM nodes WHERE normalized_name = ?"),
-    allNodes: db.prepare("SELECT * FROM nodes ORDER BY id"),
+    nodeByKey: db.prepare(
+      "SELECT * FROM nodes WHERE role = ? AND type = ? AND normalized_name = ?"
+    ),
+    allNodes: db.prepare("SELECT * FROM nodes ORDER BY role, type, id"),
+    nodesByRole: db.prepare(`
+      SELECT n.*, COUNT(si.song_id) AS use_count
+      FROM nodes n
+      LEFT JOIN song_inspirations si ON si.node_id = n.id
+      WHERE n.role = ?
+      GROUP BY n.id
+      ORDER BY n.id
+    `),
     insertSong: db.prepare(`
       INSERT INTO songs (title, concept, tags, prompt, negative_tags, model, clip_ids, audio_urls, image_urls, status)
       VALUES (@title, @concept, @tags, @prompt, @negative_tags, @model, @clip_ids, @audio_urls, @image_urls, @status)
@@ -135,12 +155,16 @@ export function openStore(dbPath = ":memory:") {
     db,
 
     // --- Nodes (R1, R2, dedup KTD-5) ---
-    addNode(type, name) {
+    addNode(role, type, name) {
+      if (!ROLES.includes(role)) {
+        throw new Error(`node role must be one of ${ROLES.join("|")}, got: ${role}`);
+      }
+      const subtype = String(type || role).trim();
       const normalized = normalize(name);
       if (!normalized) throw new Error("node name is empty after normalization");
-      const existing = q.nodeByNormalized.get(normalized);
+      const existing = q.nodeByKey.get(role, subtype, normalized);
       if (existing) return existing; // dedup: real name of the first insert is preserved
-      const info = q.insertNode.run({ type, name: String(name).trim(), normalized });
+      const info = q.insertNode.run({ role, type: subtype, name: String(name).trim(), normalized });
       return q.nodeById.get(info.lastInsertRowid);
     },
     getNode(id) {
@@ -148,6 +172,10 @@ export function openStore(dbPath = ":memory:") {
     },
     listNodes() {
       return q.allNodes.all();
+    },
+    // Nodes of a role with their lineage use_count — the sampler's input (novelty weighting).
+    nodesByRole(role) {
+      return q.nodesByRole.all(role);
     },
 
     // --- Combos (repeat-avoidance, R8/AE3) ---
