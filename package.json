@@ -4,6 +4,7 @@
   "private": true,
   "type": "module",
   "description": "A personal Suno radio station — seed influences as a graph, let a DJ combine them into songs.",
+  "license": "MIT",
   "bin": {
     "crossfade": "./bin/crossfade.mjs"
   },
