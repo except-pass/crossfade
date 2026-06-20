@@ -1,16 +1,16 @@
 // The combo sampler — draws the exact node combination for a song (R6–R8).
 // The harness samples (weighted random, novelty-biased); the DJ writes what it draws.
 //
-// Shape: a song is a band/album FUSION with optional garnish. Bands/albums are the
-// seed pool (2–3); themes are their OWN pool (0–1), so a theme is an optional subject,
-// not a co-equal seed; plus 0–2 vibes and 0–1 mutator. Weighting biases toward
-// under-used nodes (novelty/R8). Re-rolls against combo history so the same node set
-// is never generated twice (AE3). Rating-based weighting is deferred.
+// Shape: a song is built on 1–2 bands/albums (a single act or a fusion); themes are
+// their OWN pool (0–1), so a theme is an optional subject, not a co-equal seed; plus
+// 0–2 vibes and 0–1 mutator. Weighting biases toward under-used nodes (novelty/R8).
+// Re-rolls against combo history so the same node set is never generated twice (AE3).
+// Rating-based weighting is deferred.
 
 import { comboSignature } from "./store.mjs";
 
 export const DEFAULT_SHAPE = {
-  bands: [2, 3],   // band/album anchors (the seed pool)
+  bands: [1, 2],   // band/album anchors — a single act or a two-band cross
   themes: [0, 1],  // separate theme pool — at most one subject per song
   vibes: [0, 2],
   mutators: [0, 1],

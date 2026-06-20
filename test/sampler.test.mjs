@@ -16,11 +16,11 @@ function seededStore() {
   return s;
 }
 
-test("a drawn combo is a band fusion with optional garnish", () => {
+test("a drawn combo is 1-2 bands with optional garnish", () => {
   const s = seededStore();
   for (let i = 0; i < 50; i++) {
     const c = sampleCombo(s);
-    assert.ok(c.seeds.length >= 2 && c.seeds.length <= 3, "2-3 bands/albums");
+    assert.ok(c.seeds.length >= 1 && c.seeds.length <= 2, "1-2 bands/albums");
     assert.ok(c.seeds.every((n) => n.type === "band" || n.type === "album"), "seeds are anchors only");
     assert.ok(c.themes.length >= 0 && c.themes.length <= 1, "0-1 theme");
     assert.ok(c.themes.every((n) => n.role === "seed" && n.type === "theme"), "theme pool is separate");
@@ -42,21 +42,22 @@ test("fails when there aren't enough band/album anchors", () => {
   s.close();
 });
 
-test("one band is not enough for the default 2-band fusion", () => {
+test("a single band can carry a song", () => {
   const s = openStore(":memory:");
   s.addNode("seed", "band", "only one");
   s.addNode("seed", "theme", "a subject");
-  assert.throws(() => sampleCombo(s), (e) => e.code === "INSUFFICIENT_NODES");
+  const c = sampleCombo(s);
+  assert.equal(c.seeds.length, 1, "one band is enough now");
   s.close();
 });
 
-test("a theme-less graph still makes band fusions", () => {
+test("a theme-less graph still draws bands", () => {
   const s = openStore(":memory:");
   s.addNode("seed", "band", "A");
   s.addNode("seed", "band", "B");
   s.addNode("seed", "band", "C");
   const c = sampleCombo(s);
-  assert.ok(c.seeds.length >= 2, "draws a fusion with no themes present");
+  assert.ok(c.seeds.length >= 1 && c.seeds.length <= 2, "1-2 bands with no themes present");
   assert.equal(c.themes.length, 0);
   s.close();
 });

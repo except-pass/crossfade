@@ -25,8 +25,8 @@ Every node in your graph has a **role**:
 - **mutator** — an operation applied last. *(gender-swap the singer, set it a decade
   earlier, end on an unresolved chord.)*
 
-Each round, crossfade **samples a combo** — 2–3 bands/albums fused together, an
-optional theme (0–1) as the subject, plus 0–2 vibes and 0–1 mutator — weighted toward
+Each round, crossfade **samples a combo** — 1–2 bands/albums (a single act or a
+cross), an optional theme (0–1) as the subject, plus 0–2 vibes and 0–1 mutator — weighted toward
 your *under-used* nodes so it keeps exploring, and it never repeats a combo it's
 already made. A **DJ** turns that combo
 into a song brief (concept, lyrics, style, title), translating real band names into
