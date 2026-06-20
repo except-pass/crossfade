@@ -13,9 +13,11 @@ const HELP = `crossfade — a personal Suno radio station
 Usage: crossfade <command> [args]
 
 Commands:
-  node add seed <band|album|theme> "<name>"   add a seed inspiration
-  node add vibe "<name>"                       add a vibe (affect/color)
-  node add mutator "<name>"                    add a mutator (operation applied last)
+  node add seed <band|album|theme> "<name>"...  add seed(s) — quote each name
+  node add vibe "<name>"...                      add vibe(s) — affect/color
+  node add mutator "<name>"...                   add mutator(s) — operation applied last
+       (adds are idempotent: names already in the graph are skipped, not duplicated)
+  node rm <id>                                  remove a node by id
   node ls                                       list all nodes by role
   sample                                        draw a combo from the graph (no generation)
   burst <n> [--plan]                            generate n songs        (not yet)
@@ -41,25 +43,54 @@ function cmdNode(args, store) {
       return 1;
     }
     // seeds carry a sub-type (band|album|theme); vibe/mutator default sub-type to the role.
+    // Every remaining argument is a separate node name — quote multi-word names.
     const hasSubtype = role === "seed";
     const type = hasSubtype ? args[2] : role;
-    const name = args.slice(hasSubtype ? 3 : 2).join(" ").trim();
+    const names = args.slice(hasSubtype ? 3 : 2).filter((n) => n && n.trim());
     if (hasSubtype && !type) {
-      console.error('seed needs a sub-type: node add seed <band|album|theme> "<name>"');
+      console.error('seed needs a sub-type: node add seed <band|album|theme> "<name>" ["<name>" ...]');
       return 1;
     }
-    if (!name) {
-      console.error("a name is required");
+    if (!names.length) {
+      console.error('at least one name is required (quote multi-word names)');
       return 1;
     }
-    try {
-      const node = store.addNode(role, type, name);
-      console.log(`+ ${fmtNode(node).trim()}`);
-      return 0;
-    } catch (e) {
-      console.error(e.message);
+    let added = 0;
+    let existed = 0;
+    let bad = 0;
+    for (const name of names) {
+      try {
+        const existing = store.findNode(role, type, name);
+        if (existing) {
+          console.log(`=  ${fmtNode(existing).trim()}   (already in graph)`);
+          existed++;
+          continue;
+        }
+        console.log(`+  ${fmtNode(store.addNode(role, type, name)).trim()}`);
+        added++;
+      } catch (e) {
+        console.error(`!  ${name}: ${e.message}`);
+        bad++;
+      }
+    }
+    if (names.length > 1) {
+      console.log(`\n${added} added, ${existed} already present${bad ? `, ${bad} rejected` : ""}`);
+    }
+    return bad && !added ? 1 : 0;
+  }
+  if (sub === "rm" || sub === "remove") {
+    const id = Number(args[1]);
+    if (!Number.isInteger(id)) {
+      console.error("usage: node rm <id>   (see ids with `node ls`)");
       return 1;
     }
+    const removed = store.removeNode(id);
+    if (!removed) {
+      console.error(`no node #${id}`);
+      return 1;
+    }
+    console.log(`-  removed ${fmtNode(removed).trim()}`);
+    return 0;
   }
   if (sub === "ls" || sub === undefined) {
     const nodes = store.listNodes();

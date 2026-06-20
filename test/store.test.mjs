@@ -168,6 +168,25 @@ test("least-used nodes are ordered by lineage count ascending", () => {
   s.close();
 });
 
+test("findNode locates an existing node without inserting", () => {
+  const s = freshStore();
+  assert.equal(s.findNode("seed", "band", "a band"), null, "absent -> null");
+  const a = s.addNode("seed", "band", "a band");
+  assert.equal(s.findNode("seed", "band", "a band ").id, a.id, "normalized match");
+  assert.equal(s.listNodes().length, 1, "findNode does not create a node");
+  assert.equal(s.findNode("vibe", "vibe", "a band"), null, "scoped by role");
+  s.close();
+});
+
+test("removeNode deletes a node (and returns null when absent)", () => {
+  const s = freshStore();
+  const n = s.addNode("mutator", "mutator", "oops");
+  assert.equal(s.removeNode(n.id).id, n.id);
+  assert.equal(s.getNode(n.id), null);
+  assert.equal(s.removeNode(99999), null);
+  s.close();
+});
+
 test("nodesByRole returns nodes of one role with use_count", () => {
   const s = freshStore();
   const band = s.addNode("seed", "band", "A");

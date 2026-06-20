@@ -170,8 +170,23 @@ export function openStore(dbPath = ":memory:") {
     getNode(id) {
       return q.nodeById.get(id) ?? null;
     },
+    // Return the existing node for this role/type/name, or null — without inserting.
+    // Lets callers (the CLI) report "already in graph" vs "added".
+    findNode(role, type, name) {
+      const subtype = String(type || role).trim();
+      const normalized = normalize(name);
+      if (!normalized) return null;
+      return q.nodeByKey.get(role, subtype, normalized) ?? null;
+    },
     listNodes() {
       return q.allNodes.all();
+    },
+    // Delete a node by id (lineage edges cascade away). Returns the removed node or null.
+    removeNode(id) {
+      const node = q.nodeById.get(id);
+      if (!node) return null;
+      db.prepare("DELETE FROM nodes WHERE id = ?").run(id);
+      return node;
     },
     // Nodes of a role with their lineage use_count — the sampler's input (novelty weighting).
     nodesByRole(role) {

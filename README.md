@@ -185,9 +185,17 @@ Everything lives in a local SQLite file (`crossfade.db`, gitignored). The CLI is
 window into it:
 
 ```bash
-node bin/crossfade.mjs node ls          # all nodes, grouped by role
+# add one or many at once — multi-word names must be quoted; dups are skipped
+node bin/crossfade.mjs node add seed band "a band" "a band" "a band"
+node bin/crossfade.mjs node add mutator "set it a decade earlier" "make it a duet"
+
+node bin/crossfade.mjs node ls          # all nodes, grouped by role (with ids)
+node bin/crossfade.mjs node rm 42       # remove a node by id
 node bin/crossfade.mjs sample           # draw a fresh, never-before-made combo
 ```
+
+`node add` is idempotent — it reports `+` for newly added names and `=` for ones
+already in the graph, so you can re-run a seed list safely.
 
 A song's lineage is a set of edges from the song to each node that inspired it, so you
 can always trace *"which influences made this?"* — and the `combos` table guarantees
