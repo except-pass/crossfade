@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { SEL, isCaptchaFrameUrl, robustFill, clickCreate, findNameLeak, assertNoNameLeak, recordGeneratedSong } from "../src/suno.mjs";
+import { SEL, isCaptchaFrameUrl, robustFill, clickCreate, findNameLeak, assertNoNameLeak, recordGeneratedSong, generateSong } from "../src/suno.mjs";
 import { openStore } from "../src/store.mjs";
 
 // --- minimal Playwright stubs (no real browser) ---
@@ -153,6 +153,39 @@ test("recordGeneratedSong stores pending when no clips captured", () => {
   assert.equal(rec.status, "pending");
   assert.equal(s.getSong(rec.songId).status, "pending");
   s.close();
+});
+
+// A fake browser whose create page can't fill any field — exercises the safety abort
+// in generateSong without a real browser (injected via opts.connect).
+function unfillableBrowser() {
+  let closed = false;
+  const dead = { first() { return this; }, async count() { return 0; }, async click() {}, async fill() {} };
+  const page = {
+    url: () => "https://suno.com/create",
+    getByRole: () => dead,
+    locator: () => dead,
+    async waitForTimeout() {},
+    async bringToFront() {},
+    async screenshot() {},
+    async evaluate() { return false; },
+  };
+  return {
+    handle: { contexts: () => [{ pages: () => [page], async newPage() { return page; } }], async close() { closed = true; } },
+    wasClosed: () => closed,
+  };
+}
+
+test("generateSong aborts before Create when the form can't be filled", async () => {
+  const fake = unfillableBrowser();
+  await assert.rejects(
+    generateSong(
+      { title: "T", tags: "style", prompt: "words", _nodeIds: [] },
+      { skipGuard: true, connect: async () => fake.handle }
+    ),
+    /form fill failed/,
+    "throws the drift-abort error rather than spending a Create click"
+  );
+  assert.equal(fake.wasClosed(), true, "still detaches the CDP connection on the error path");
 });
 
 test("findNameLeak flags the field carrying a real band name", () => {

@@ -203,7 +203,7 @@ export async function assertNoNameLeak(brief, opts = {}) {
 export async function generateSong(brief, opts = {}) {
   if (!opts.skipGuard) await assertNoNameLeak(brief, opts);
 
-  const browser = await connect(opts.cdpUrl || config.cdpUrl);
+  const browser = await (opts.connect || connect)(opts.cdpUrl || config.cdpUrl);
   try {
     const page = await findCreatePage(browser);
     const filled = await fillBrief(page, brief);
