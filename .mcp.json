@@ -1,7 +1,7 @@
 {
   "mcpServers": {
     "nats": {
-      "command": "/home/ubuntu/.bun/bin/bun",
+      "command": "bun",
       "args": [
         "x",
         "github:except-pass/nats-channel-mcp",

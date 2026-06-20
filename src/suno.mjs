@@ -48,7 +48,7 @@ async function findCreatePage(browser) {
 
 // Fill a field with .fill(), falling back to a React-safe native setter + input
 // event (some Suno fields ignore Playwright's fill — proven in suno-title.mjs).
-async function robustFill(page, selector, value) {
+export async function robustFill(page, selector, value) {
   const loc = page.locator(selector).first();
   if (!(await loc.count())) return false;
   try {

@@ -194,10 +194,14 @@ test("removeNode refuses a node referenced by songs unless forced", () => {
 
   assert.throws(() => s.removeNode(band.id), (e) => e.code === "NODE_REFERENCED");
   assert.ok(s.getNode(band.id), "still present after a refused delete");
+  assert.equal(s.comboExists([band.id]), true, "combo recorded while referenced");
 
-  assert.equal(s.removeNode(band.id, { force: true }).id, band.id, "force deletes");
+  const removed = s.removeNode(band.id, { force: true });
+  assert.equal(removed.id, band.id, "force deletes");
+  assert.equal(removed.songsAffected, 1);
   assert.equal(s.getNode(band.id), null);
   assert.equal(s.nodesForSong(songId).length, 0, "lineage edge cascaded away");
+  assert.equal(s.comboExists([band.id]), false, "stale combo row cleaned up");
   s.close();
 });
 

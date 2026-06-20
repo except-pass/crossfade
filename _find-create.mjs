@@ -1,5 +1,5 @@
 import { chromium } from "playwright-core";
-const browser = await chromium.connectOverCDP(process.env.CDP_URL);
+const browser = await chromium.connectOverCDP(process.env.CDP_URL || "http://localhost:9222");
 const page = browser.contexts()[0].pages().find(p=>p.url().includes("suno.com/create"));
 const btns = await page.evaluate(() => [...document.querySelectorAll('button,[role=button]')].map((b)=>({
   text:(b.innerText||'').trim().slice(0,40), aria:b.getAttribute('aria-label'),

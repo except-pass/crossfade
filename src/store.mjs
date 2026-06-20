@@ -187,19 +187,26 @@ export function openStore(dbPath = ":memory:") {
     removeNode(id, { force = false } = {}) {
       const node = q.nodeById.get(id);
       if (!node) return null;
-      if (!force) {
-        const refs = q.songsForNode.all(id).length;
-        if (refs > 0) {
-          const err = new Error(
-            `node #${id} ("${node.name}") is referenced by ${refs} song(s); deleting would erase their lineage`
-          );
-          err.code = "NODE_REFERENCED";
-          err.songCount = refs;
-          throw err;
-        }
+      const refs = q.songsForNode.all(id).length;
+      if (refs > 0 && !force) {
+        const err = new Error(
+          `node #${id} ("${node.name}") is referenced by ${refs} song(s); deleting would erase their lineage`
+        );
+        err.code = "NODE_REFERENCED";
+        err.songCount = refs;
+        throw err;
       }
-      db.prepare("DELETE FROM nodes WHERE id = ?").run(id);
-      return node;
+      db.transaction(() => {
+        if (refs > 0) {
+          // The deleted node is in those songs' combo signatures; drop the now-stale
+          // combo rows so the (re-formable) combination isn't blocked as a repeat.
+          db.prepare(
+            "DELETE FROM combos WHERE song_id IN (SELECT song_id FROM song_inspirations WHERE node_id = ?)"
+          ).run(id);
+        }
+        db.prepare("DELETE FROM nodes WHERE id = ?").run(id); // cascades song_inspirations
+      })();
+      return { ...node, songsAffected: refs };
     },
     // Nodes of a role with their lineage use_count — the sampler's input (novelty weighting).
     nodesByRole(role) {

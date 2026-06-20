@@ -2,16 +2,16 @@
 // Spike: drive gcui-art/suno-api in "custom" mode (own lyrics + style + title, separately).
 //
 // Prereq: the suno-api server is running locally (see README in this dir):
-//   cd suno-api && npm run dev      # listens on http://localhost:3000
+//   cd suno-api && npx next dev -p 4789      # listens on http://localhost:4789
 // and suno-api/.env has a valid SUNO_COOKIE (+ TWOCAPTCHA_KEY).
 //
 // Usage:
 //   node generate.mjs                # fire-and-poll using ./song.json
-//   SUNO_API=http://localhost:3000 node generate.mjs ./song.json
+//   SUNO_API=http://localhost:4789 node generate.mjs ./song.json
 
 import { readFile } from "node:fs/promises";
 
-const API = process.env.SUNO_API || "http://localhost:3000";
+const API = process.env.SUNO_API || "http://localhost:4789";
 const songPath = process.argv[2] || new URL("./song.json", import.meta.url).pathname;
 
 const j = async (res) => {

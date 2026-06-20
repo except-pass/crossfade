@@ -99,7 +99,8 @@ function cmdNode(args, store) {
         console.error(`no node #${id}`);
         return 1;
       }
-      console.log(`-  removed ${fmtNode(removed).trim()}`);
+      const loss = removed.songsAffected ? `  (dropped lineage for ${removed.songsAffected} song(s))` : "";
+      console.log(`-  removed ${fmtNode(removed).trim()}${loss}`);
       return 0;
     } catch (e) {
       if (e.code === "NODE_REFERENCED") {
