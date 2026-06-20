@@ -11,11 +11,10 @@ generates it in your Suno feed — recording exactly where every song came from.
 
 > *Seed a world. Let the machine surprise you. Every song knows its lineage.*
 
-![Your crossfade songs in the Suno library](screenshots/feed.png)
-
-*Four songs above came from draws like "a band × a band × a
-voicemail you never deleted, wry and self-deprecating." Note the styles are pure
-sonic descriptors — Suno blocks real band names, so crossfade translates them.*
+*Songs come from draws like "[two bands you love] × a voicemail you never deleted,
+wry and self-deprecating." The styles Suno sees are pure sonic descriptors — it blocks
+real band names, so crossfade translates them. Your graph stays your own; nothing in
+this repo ships with anyone's taste.*
 
 ---
 
@@ -23,8 +22,8 @@ sonic descriptors — Suno blocks real band names, so crossfade translates them.
 
 Every node in your graph has a **role**:
 
-- **seed** — the raw material. Sub-typed `band`, `album`, or `theme`. *(a band,
-  an album, "returning home unexpectedly".)*
+- **seed** — the raw material. Sub-typed `band`, `album`, or `theme`. *(a band you
+  love, a favorite album, "returning home unexpectedly".)*
 - **vibe** — the emotional color. *(nostalgic, manic and caffeinated, wintry and detached.)*
 - **mutator** — an operation applied last. *(gender-swap the singer, set it a decade
   earlier, end on an unresolved chord.)*
@@ -131,8 +130,7 @@ node src/suno.mjs --check
 **1. Seed a few nodes.**
 
 ```bash
-node bin/crossfade.mjs node add seed band  "a band"
-node bin/crossfade.mjs node add seed band  "a band"
+node bin/crossfade.mjs node add seed band  "A Band You Love" "Another Band You Love"
 node bin/crossfade.mjs node add seed theme "the friend who never made it out of the hometown"
 node bin/crossfade.mjs node add vibe       "earnest to the point of oversharing"
 node bin/crossfade.mjs node add mutator    "make it a duet"
@@ -144,7 +142,7 @@ node bin/crossfade.mjs node ls
 ```bash
 node bin/crossfade.mjs sample
 # drew a combo:
-#   bands   : a band (band), a band (band)
+#   bands   : A Band You Love (band), Another Band You Love (band)
 #   theme   : the friend who never made it out of the hometown
 #   vibes   : (none)
 #   mutators: (none)
@@ -175,9 +173,7 @@ node src/suno.mjs briefs/01-same-bar.json
 
 crossfade switches your Suno tab to **Advanced**, fills lyrics/style/title, and clicks
 **Create**. If Suno shows an hCaptcha, solve it in the browser — generation starts
-the moment you do. Two takes land in your feed:
-
-![The Advanced form, filled by crossfade](screenshots/create-form.png)
+the moment you do. Two takes land in your feed.
 
 **5. Record the lineage** so the graph remembers it (and never repeats the combo).
 A one-shot `burst` command that does steps 2–5 together is coming; for now:
@@ -208,7 +204,7 @@ window into it:
 
 ```bash
 # add one or many at once — multi-word names must be quoted; dups are skipped
-node bin/crossfade.mjs node add seed band "a band" "a band" "a band"
+node bin/crossfade.mjs node add seed band "A Band You Love" "Another One" "A Third"
 node bin/crossfade.mjs node add mutator "set it a decade earlier" "make it a duet"
 
 node bin/crossfade.mjs node ls          # all nodes, grouped by role (with ids)

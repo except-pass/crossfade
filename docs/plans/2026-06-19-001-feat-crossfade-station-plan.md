@@ -59,7 +59,7 @@ Traceability is to the origin requirements doc (`see origin`). Origin IDs: R1–
 
 - KTD-5. **better-sqlite3 + node:test, no framework.** Persistence uses `better-sqlite3` (synchronous, simplest for a local single-process CLI); tests use the built-in `node:test` runner (Node ≥18, no new dependency). Node de-dup is exact-after-normalization (lowercase, trim, collapse internal whitespace, strip surrounding punctuation) with a unique index on the normalized key; semantic aliasing is deferred (see Scope Boundaries).
 
-- KTD-6. **Name-leak guard before every generation.** Because Suno blocks real names and the graph stores them, the harness validates each DJ-returned brief before sending to suno-api. It checks the brief's `tags`/`prompt`/`title` against the **real names of the specific nodes feeding that song** (its lineage set), not against the whole inventory, using normalized **word-boundary** matching (reusing `normalize()` from KTD-5) — so case and spacing variants ("a band", "A BAND") are caught while common-word band names ("Yes", "Kiss", "War", "Air") don't false-positive against ordinary descriptive prose. A match rejects the brief back to the DJ for a rewrite, bounded to a small retry count (default 2); after that the brief is dropped from the batch with a logged reason rather than looping forever. This makes AE2 a harness invariant, not a DJ promise.
+- KTD-6. **Name-leak guard before every generation.** Because Suno blocks real names and the graph stores them, the harness validates each DJ-returned brief before sending to suno-api. It checks the brief's `tags`/`prompt`/`title` against the **real names of the specific nodes feeding that song** (its lineage set), not against the whole inventory, using normalized **word-boundary** matching (reusing `normalize()` from KTD-5) — so case and spacing variants ("band alpha", "BAND ALPHA") are caught while common-word band names ("Yes", "Kiss", "War", "Air") don't false-positive against ordinary descriptive prose. A match rejects the brief back to the DJ for a rewrite, bounded to a small retry count (default 2); after that the brief is dropped from the batch with a logged reason rather than looping forever. This makes AE2 a harness invariant, not a DJ promise.
 
 ---
 
@@ -174,7 +174,7 @@ The per-unit **Files** lists are authoritative; the tree is the intended shape, 
 - **Approach:** Tables — `nodes(id, type, name, normalized_name UNIQUE, created_at)`; `songs(id, title, concept, tags, prompt, negative_tags, model, suno_clip_ids, audio_urls, image_urls, created_at)`; `song_inspirations(song_id, node_id)` join (the lineage edge, R3); `ratings(song_id, thumb, note, created_at)`; `combos(signature UNIQUE, song_id, created_at)` where `signature` is the sorted set of node ids in a generation (powers repeat-avoidance, R8). Node dedup: a `normalize(name)` helper (lowercase, trim, collapse internal whitespace, strip surrounding punctuation) feeds the unique index; inserting an existing normalized name returns the existing node (KTD-5). Graph reads (e.g., "songs sharing an inspiration", "least-used nodes") use recursive CTEs / joins, not application loops. Open-ended `type` is a free string column, not an enum (R1).
 - **Patterns to follow:** synchronous `better-sqlite3` prepared statements.
 - **Test scenarios:**
-  - Adding two names that normalize identically ("a band" / "a band ") yields one node, real name preserved (R1/R2).
+  - Adding two names that normalize identically ("Band Alpha" / "band alpha ") yields one node, real name preserved (R1/R2).
   - A song persists with its concept, exact inputs, all returned clip ids/urls, and one lineage edge per inspiration node (R3/R10).
   - Lineage query returns all songs linked to a given node, and all nodes linked to a given song.
   - `combos` rejects a duplicate signature for the same node set (R8 support).
@@ -300,7 +300,7 @@ The per-unit **Files** lists are authoritative; the tree is the intended shape, 
 
 ### Deferred to follow-up work (plan-local)
 
-- Semantic node aliasing ("a band" ≡ "a band") — v1 does exact-after-normalization dedup only (KTD-5); the DJ may flag suspected aliases for manual merge later.
+- Semantic node aliasing ("Band Alpha" ≡ "band alpha spelled out") — v1 does exact-after-normalization dedup only (KTD-5); the DJ may flag suspected aliases for manual merge later.
 - JetStream durable NATS delivery — unnecessary while both ends are alive per summon (KTD-3); revisit only if a long-lived DJ is reintroduced.
 - A persistent/standing DJ mode — explicitly rejected for v1 (KTD-2); revisit if summon latency becomes a felt cost.
 

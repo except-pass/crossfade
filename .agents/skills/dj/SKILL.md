@@ -39,9 +39,9 @@ draw several distinct ones first, then write each.
 1. **Never send a real band/album name to Suno.** Translate each into *sonic
    descriptors* — era, genre, instrumentation, vocal character, production. The real
    name stays in the graph (lineage); only descriptors go in `tags`. This is a hard
-   safety invariant, not a preference. Example: *a band* → "late-1990s
-   post-grunge adult-alternative radio rock, earnest male vocals, jangly chiming clean
-   guitars, polished anthemic chorus."
+   safety invariant, not a preference. Example: a band known for late-'90s
+   post-grunge radio rock becomes "late-1990s post-grunge adult-alternative radio
+   rock, earnest male vocals, jangly chiming clean guitars, polished anthemic chorus."
 2. **Blend, don't list.** With 2+ band/album seeds, *fuse* their sounds into one
    coherent style and name the tension — don't concatenate two separate descriptions.
 3. **Vibes color the affect** — fold them into both the style and the lyrical tone.
@@ -120,5 +120,5 @@ s.close();' briefs/<your-brief>.json
 - **Do the lyrics contain ONLY bare section tags and sung words** — no parentheticals,
   no annotated headers, no stage directions? (All of that belongs in `tags`.)
 
-Worked examples live in `briefs/` — see `briefs/08-*.json` onward for the clean
-lyrics-hygiene shape (earlier briefs predate rule 5 and have directions inline).
+See [`briefs/EXAMPLE.json`](../../../briefs/EXAMPLE.json) for the brief shape with
+clean, lyrics-hygiene-compliant lyrics. Save your own briefs alongside it in `briefs/`.

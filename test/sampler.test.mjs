@@ -5,9 +5,9 @@ import { sampleCombo } from "../src/sampler.mjs";
 
 function seededStore() {
   const s = openStore(":memory:");
-  s.addNode("seed", "band", "a band");
-  s.addNode("seed", "band", "a band");
-  s.addNode("seed", "album", "an album");
+  s.addNode("seed", "band", "Band Alpha");
+  s.addNode("seed", "band", "Band Beta");
+  s.addNode("seed", "album", "Demo Album");
   s.addNode("seed", "theme", "returning home unexpectedly");
   s.addNode("seed", "theme", "the last summer");
   s.addNode("vibe", "vibe", "nostalgic");

@@ -1,0 +1,11 @@
+{
+  "_combo": "<band(s)> × <optional theme> · vibe: <vibe> · mutator: <mutator>  — a template; replace with your real draw from `crossfade sample`",
+  "_nodeIds": [],
+  "_concept": "Two or three sentences: what this song is and why the combo is interesting. Real band names live here and in the graph for lineage — never in the fields sent to Suno.",
+  "title": "An Evocative Title (never a band name)",
+  "tags": "the MUSICAL STYLE as pure sonic descriptors — era, genre, instrumentation, vocal character, production — plus the vibe and ALL performance/arrangement direction (e.g. 'spoken-word bridge', 'gated drums slamming in on the final chorus', 'doubled vocals'). Translate every real band's sound into terms like these; the name never appears.",
+  "negative_tags": "styles to steer away from",
+  "make_instrumental": false,
+  "model": "v4.5",
+  "prompt": "[Intro]\n\n[Verse 1]\nOnly bare section tags and the words that get sung go in here\nNo parentheticals, no stage directions, no annotated headers\n\n[Chorus]\nEverything about how it sounds belongs in tags, not here\nThis field is only the lyrics\n\n[Bridge]\nWant a spoken bridge? Put spoken-word bridge in tags\nand just write the bridge's words under a bare Bridge tag\n\n[Outro]\nThat's the whole shape"
+}

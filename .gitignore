@@ -16,3 +16,6 @@ node_modules/
 
 # vendored third-party clone (gcui-art/suno-api) — has its own git history
 suno-api/
+
+# local generation artifacts (per-song screenshots, brief drafts)
+gen-*.png

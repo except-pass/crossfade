@@ -7,10 +7,10 @@ function freshStore() {
 }
 
 test("normalize folds case, whitespace, and surrounding punctuation", () => {
-  assert.equal(normalize("a band"), "a band");
-  assert.equal(normalize("  matchbox   20 "), "a band");
-  assert.equal(normalize("a band!"), "a band");
-  assert.equal(normalize("“a band”"), "a band");
+  assert.equal(normalize("Band Alpha"), "band alpha");
+  assert.equal(normalize("  Band   Alpha "), "band alpha");
+  assert.equal(normalize("Band Alpha!"), "band alpha");
+  assert.equal(normalize("“Band Gamma”"), "band gamma");
   assert.equal(normalize("   "), "");
 });
 
@@ -32,11 +32,11 @@ test("addNode validates role", () => {
 
 test("node dedup: variants collapse to one node, real name preserved", () => {
   const s = freshStore();
-  const a = s.addNode("seed", "band", "a band");
-  const b = s.addNode("seed", "band", "a band "); // normalizes identically
+  const a = s.addNode("seed", "band", "Band Alpha");
+  const b = s.addNode("seed", "band", "band alpha "); // normalizes identically
   assert.equal(a.id, b.id, "same role+type+normalized -> same node");
   assert.equal(s.listNodes().length, 1);
-  assert.equal(s.getNode(a.id).name, "a band", "first real name is preserved");
+  assert.equal(s.getNode(a.id).name, "Band Alpha", "first real name is preserved");
   assert.equal(s.getNode(a.id).role, "seed");
   assert.equal(s.getNode(a.id).type, "band");
   s.close();
@@ -60,8 +60,8 @@ test("empty/punctuation-only node names are rejected", () => {
 
 test("song persists with concept, exact inputs, clip ids/urls, and lineage", () => {
   const s = freshStore();
-  const band1 = s.addNode("seed", "band", "a band");
-  const band2 = s.addNode("seed", "band", "a band");
+  const band1 = s.addNode("seed", "band", "Band Alpha");
+  const band2 = s.addNode("seed", "band", "Band Beta");
   const theme = s.addNode("seed", "theme", "returning home unexpectedly");
 
   const songId = s.recordSong({
@@ -97,7 +97,7 @@ test("song persists with concept, exact inputs, clip ids/urls, and lineage", () 
 
 test("lineage queries resolve both directions", () => {
   const s = freshStore();
-  const band = s.addNode("seed", "band", "a band");
+  const band = s.addNode("seed", "band", "Band Alpha");
   const theme1 = s.addNode("seed", "theme", "homecoming");
   const theme2 = s.addNode("seed", "theme", "leaving");
 
@@ -170,11 +170,11 @@ test("least-used nodes are ordered by lineage count ascending", () => {
 
 test("findNode locates an existing node without inserting", () => {
   const s = freshStore();
-  assert.equal(s.findNode("seed", "band", "a band"), null, "absent -> null");
-  const a = s.addNode("seed", "band", "a band");
-  assert.equal(s.findNode("seed", "band", "a band ").id, a.id, "normalized match");
+  assert.equal(s.findNode("seed", "band", "Band Alpha"), null, "absent -> null");
+  const a = s.addNode("seed", "band", "Band Alpha");
+  assert.equal(s.findNode("seed", "band", "band alpha ").id, a.id, "normalized match");
   assert.equal(s.listNodes().length, 1, "findNode does not create a node");
-  assert.equal(s.findNode("vibe", "vibe", "a band"), null, "scoped by role");
+  assert.equal(s.findNode("vibe", "vibe", "Band Alpha"), null, "scoped by role");
   s.close();
 });
 

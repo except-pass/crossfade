@@ -63,7 +63,7 @@ What's missing is the *station*: a standing inventory of influences you can reco
   - **Covered by:** R6, R7, R8, R9, R10, R11, R12, R13, R18
 
 - F3. **Directed what-if**
-  - **Trigger:** You ask the DJ directly ("what if a band + a band made a song about returning home unexpectedly").
+  - **Trigger:** You ask the DJ directly ("what if Band Alpha + Band Beta made a song about returning home unexpectedly").
   - **Steps:** The DJ authors and translates for the combo you named — its *selection* step is skipped — and the brief enters the same harness generation, lineage, and budget pipeline as F2.
   - **Outcome:** One song generated and linked to the named inspirations.
   - **Covered by:** R16, R18
@@ -123,7 +123,7 @@ What's missing is the *station*: a standing inventory of influences you can reco
 ## Acceptance Examples
 
 - AE1. **Covers R12.** Given a weekly cap with little headroom left, when you request a burst of 5, the station computes the projected spend, sees it would cross the cap, and refuses the whole batch before sending anything to Suno.
-- AE2. **Covers R2.** Given a node named "a band", when a song inspired by it is generated, the Suno `custom_generate` payload contains only sonic descriptors (e.g. "post-grunge radio rock, earnest male vocals, jangly guitars") — the literal string "a band" never appears in what's sent to Suno, while the graph lineage still links the song to the "a band" node.
+- AE2. **Covers R2.** Given a node named "Band Alpha", when a song inspired by it is generated, the Suno `custom_generate` payload contains only sonic descriptors (e.g. "post-grunge radio rock, earnest male vocals, jangly guitars") — the literal string "Band Alpha" never appears in what's sent to Suno, while the graph lineage still links the song to the "Band Alpha" node.
 - AE3. **Covers R8.** Given that the combination (band A + theme B) already exists in lineage, when a new burst runs, the DJ is not offered — and does not propose — that same combination again.
 
 ---
@@ -158,6 +158,6 @@ What's missing is the *station*: a standing inventory of influences you can reco
 ### Deferred to planning
 
 - Whether the DJ is always-on (a standing agent you can DM anytime) or spun up per burst by the harness, and the NATS subject/message schema between harness and DJ.
-- Node identity / de-duplication (is "a band" the same node as "a band"?).
+- Node identity / de-duplication (is "Band Alpha" the same node as "band alpha spelled out"?).
 - How much lineage and rating history fits in the DJ's prompt before it needs summarizing or sampling.
 - Whether concept briefs are stored verbatim per song or regenerated on demand.

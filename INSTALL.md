@@ -72,16 +72,36 @@ see [`CDP-PLUMBING.md`](CDP-PLUMBING.md) — but that's the advanced case.
 
 ### 3. Seed the graph
 
-Ask the person for **a handful of bands or artists they love**, plus (optionally) a
-couple of **themes** (subjects a song could be about), **vibes** (moods), and a
-**mutator** (an operation, e.g. "gender-swap the singer"). Add them — `node add` takes
-many quoted names at once and skips duplicates:
+**3a. Auto-seed the generic primitives.** Themes, vibes, and mutators aren't anyone's
+personal taste — they're the creative dials. Seed a starter set yourself, no need to
+ask (`node add` takes many quoted names at once and skips duplicates):
 
 ```bash
-node bin/crossfade.mjs node add seed band "Band One" "Band Two" "Band Three"
-node bin/crossfade.mjs node add seed theme "driving home for a funeral you're not sure you're invited to"
-node bin/crossfade.mjs node add vibe "nostalgic" "defiant"
-node bin/crossfade.mjs node add mutator "set it a decade earlier"
+node bin/crossfade.mjs node add seed theme \
+  "returning home unexpectedly" "a voicemail you never deleted" \
+  "the last summer before everyone scatters" "texting an ex you swore you were over" \
+  "driving nowhere at 2am to feel something" "still in love at someone else's wedding" \
+  "the friend who never made it out of the hometown" "growing out of the scene that raised you"
+
+node bin/crossfade.mjs node add vibe \
+  "nostalgic" "euphoric but melancholy" "anthemic and desperate" "bittersweet" \
+  "yearning" "defiant" "wry and self-deprecating" "wintry and detached"
+
+node bin/crossfade.mjs node add mutator \
+  "gender-swap the singer" "strip every cliche" "make it a duet" "set it a decade earlier" \
+  "tell it from the person being left, not the one leaving" "add a spoken-word bridge" \
+  "make it a lo-fi bedroom demo" \
+  "if the band were still together today — aged up, the adult, age-appropriate version"
+```
+
+**3b. 🧑 HUMAN — ask for the bands.** This is the fun part of onboarding: ask the
+person **what bands or artists they love** (a handful is plenty), and add exactly those.
+Do **not** add bands they didn't name — the graph is theirs to fill.
+
+```bash
+node bin/crossfade.mjs node add seed band "<the bands they named>" "<another>" ...
+# optional: a favorite album as a tighter seed
+node bin/crossfade.mjs node add seed album "<a favorite album>"
 node bin/crossfade.mjs node ls
 ```
 
