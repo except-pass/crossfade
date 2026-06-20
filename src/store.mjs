@@ -181,10 +181,23 @@ export function openStore(dbPath = ":memory:") {
     listNodes() {
       return q.allNodes.all();
     },
-    // Delete a node by id (lineage edges cascade away). Returns the removed node or null.
-    removeNode(id) {
+    // Delete a node by id. Refuses (unless force) when songs were inspired by it,
+    // because deleting cascades away their lineage edges — and "every song knows its
+    // lineage" is the whole point. Returns the removed node, or null if no such node.
+    removeNode(id, { force = false } = {}) {
       const node = q.nodeById.get(id);
       if (!node) return null;
+      if (!force) {
+        const refs = q.songsForNode.all(id).length;
+        if (refs > 0) {
+          const err = new Error(
+            `node #${id} ("${node.name}") is referenced by ${refs} song(s); deleting would erase their lineage`
+          );
+          err.code = "NODE_REFERENCED";
+          err.songCount = refs;
+          throw err;
+        }
+      }
       db.prepare("DELETE FROM nodes WHERE id = ?").run(id);
       return node;
     },

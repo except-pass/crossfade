@@ -19,3 +19,11 @@ suno-api/
 
 # local generation artifacts (per-song screenshots, brief drafts)
 gen-*.png
+
+# personal song briefs stay local — only the template is tracked
+briefs/*.json
+!briefs/EXAMPLE.json
+
+# one-off generation/spike screenshots
+suno-*.png
+cdp-smoke.png

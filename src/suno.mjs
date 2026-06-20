@@ -15,13 +15,18 @@ import { chromium } from "playwright-core";
 import { readFile } from "node:fs/promises";
 import { config } from "./config.mjs";
 
-const SEL = {
+export const SEL = {
   advancedTab: "Advanced",
   lyrics: '[data-testid="lyrics-textarea"]',
   styles: 'textarea[placeholder*="electro"], textarea[placeholder*="guitar riffs"]',
   title: 'input[placeholder*="title" i], textarea[placeholder*="title" i], input[aria-label*="title" i]',
   createBtn: "Create song",
 };
+
+// Does this frame URL look like the hCaptcha challenge? (Pure, unit-testable.)
+export function isCaptchaFrameUrl(url) {
+  return /hcaptcha|captcha/i.test(String(url ?? ""));
+}
 
 export async function connect(cdpUrl = config.cdpUrl) {
   return chromium.connectOverCDP(cdpUrl);
@@ -100,7 +105,7 @@ export async function clickCreate(page, { screenshotPath } = {}) {
   let captchaPresent = false;
   for (let i = 0; i < 8 && !captchaPresent; i++) {
     await page.waitForTimeout(1500);
-    if (page.frames().some((f) => /hcaptcha|captcha/i.test(f.url()))) captchaPresent = true;
+    if (page.frames().some((f) => isCaptchaFrameUrl(f.url()))) captchaPresent = true;
     if (!captchaPresent) {
       for (const f of page.frames()) {
         const hit = await f.locator(".challenge-container, [class*=challenge]").count().catch(() => 0);
@@ -169,7 +174,7 @@ if (import.meta.url === `file://${process.argv[1]}`) {
       process.exit(1);
     }
     const brief = JSON.parse(await readFile(briefPath, "utf8"));
-    const screenshotPath = new URL("../suno-harness.png", import.meta.url).pathname;
+    const screenshotPath = new URL("../gen-suno-harness.png", import.meta.url).pathname;
     generateSong(brief, { fillOnly: args.includes("--fill-only"), screenshotPath })
       .then((r) => {
         console.log(JSON.stringify(r, null, 2));

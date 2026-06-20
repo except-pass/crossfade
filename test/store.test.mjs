@@ -187,6 +187,20 @@ test("removeNode deletes a node (and returns null when absent)", () => {
   s.close();
 });
 
+test("removeNode refuses a node referenced by songs unless forced", () => {
+  const s = freshStore();
+  const band = s.addNode("seed", "band", "A");
+  const songId = s.recordSong({ title: "x", inspirationNodeIds: [band.id] });
+
+  assert.throws(() => s.removeNode(band.id), (e) => e.code === "NODE_REFERENCED");
+  assert.ok(s.getNode(band.id), "still present after a refused delete");
+
+  assert.equal(s.removeNode(band.id, { force: true }).id, band.id, "force deletes");
+  assert.equal(s.getNode(band.id), null);
+  assert.equal(s.nodesForSong(songId).length, 0, "lineage edge cascaded away");
+  s.close();
+});
+
 test("nodesByRole returns nodes of one role with use_count", () => {
   const s = freshStore();
   const band = s.addNode("seed", "band", "A");

@@ -28,6 +28,7 @@ Commands:
 `;
 
 const NOT_YET = new Set(["burst", "ask", "chat", "rate", "lineage"]);
+const SEED_TYPES = ["band", "album", "theme"];
 
 function fmtNode(n) {
   const sub = n.role === n.type ? n.role : `${n.role}:${n.type}`;
@@ -49,6 +50,12 @@ function cmdNode(args, store) {
     const names = args.slice(hasSubtype ? 3 : 2).filter((n) => n && n.trim());
     if (hasSubtype && !type) {
       console.error('seed needs a sub-type: node add seed <band|album|theme> "<name>" ["<name>" ...]');
+      return 1;
+    }
+    // Validate the seed sub-type — a typo here creates a node the sampler can never
+    // draw (it only knows band/album anchors and theme), so reject it early.
+    if (hasSubtype && !SEED_TYPES.includes(type)) {
+      console.error(`seed sub-type must be one of ${SEED_TYPES.join("|")}, got: "${type}"`);
       return 1;
     }
     if (!names.length) {
@@ -79,18 +86,28 @@ function cmdNode(args, store) {
     return bad && !added ? 1 : 0;
   }
   if (sub === "rm" || sub === "remove") {
-    const id = Number(args[1]);
+    const rest = args.slice(1);
+    const force = rest.includes("--force") || rest.includes("-f");
+    const id = Number(rest.find((a) => a && !a.startsWith("-")));
     if (!Number.isInteger(id)) {
-      console.error("usage: node rm <id>   (see ids with `node ls`)");
+      console.error("usage: node rm <id> [--force]   (see ids with `node ls`)");
       return 1;
     }
-    const removed = store.removeNode(id);
-    if (!removed) {
-      console.error(`no node #${id}`);
-      return 1;
+    try {
+      const removed = store.removeNode(id, { force });
+      if (!removed) {
+        console.error(`no node #${id}`);
+        return 1;
+      }
+      console.log(`-  removed ${fmtNode(removed).trim()}`);
+      return 0;
+    } catch (e) {
+      if (e.code === "NODE_REFERENCED") {
+        console.error(`${e.message}.\n   Re-run with --force to delete it and drop those lineage edges.`);
+        return 1;
+      }
+      throw e;
     }
-    console.log(`-  removed ${fmtNode(removed).trim()}`);
-    return 0;
   }
   if (sub === "ls" || sub === undefined) {
     const nodes = store.listNodes();
