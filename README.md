@@ -25,9 +25,10 @@ Every node in your graph has a **role**:
 - **mutator** — an operation applied last. *(gender-swap the singer, set it a decade
   earlier, end on an unresolved chord.)*
 
-Each round, crossfade **samples a combo** — 2–3 seeds with at least one band/album
-anchor, 0–2 vibes, 0–1 mutator — weighted toward your *under-used* nodes so it keeps
-exploring, and it never repeats a combo it's already made. A **DJ** turns that combo
+Each round, crossfade **samples a combo** — 2–3 bands/albums fused together, an
+optional theme (0–1) as the subject, plus 0–2 vibes and 0–1 mutator — weighted toward
+your *under-used* nodes so it keeps exploring, and it never repeats a combo it's
+already made. A **DJ** turns that combo
 into a song brief (concept, lyrics, style, title), translating real band names into
 sonic descriptors. The brief is generated on `suno.com`, and the song's inspiration
 **lineage** is written back into the graph.
@@ -121,7 +122,8 @@ node bin/crossfade.mjs node ls
 ```bash
 node bin/crossfade.mjs sample
 # drew a combo:
-#   seeds   : a band (band), the friend who never made it out... (theme), a band (band)
+#   bands   : a band (band), a band (band)
+#   theme   : the friend who never made it out of the hometown
 #   vibes   : (none)
 #   mutators: (none)
 ```

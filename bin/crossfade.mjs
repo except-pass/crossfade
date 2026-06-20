@@ -83,7 +83,8 @@ function cmdSample(store) {
   try {
     const c = sampleCombo(store);
     console.log("drew a combo:");
-    console.log("  seeds   :", c.seeds.map((n) => `${n.name} (${n.type})`).join(", "));
+    console.log("  bands   :", c.seeds.map((n) => `${n.name} (${n.type})`).join(", "));
+    console.log("  theme   :", c.themes.map((n) => n.name).join(", ") || "(none)");
     console.log("  vibes   :", c.vibes.map((n) => n.name).join(", ") || "(none)");
     console.log("  mutators:", c.mutators.map((n) => n.name).join(", ") || "(none)");
     console.log("  signature:", c.signature);

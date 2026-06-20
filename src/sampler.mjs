@@ -1,18 +1,19 @@
 // The combo sampler — draws the exact node combination for a song (R6–R8).
 // The harness samples (weighted random, novelty-biased); the DJ writes what it draws.
 //
-// Shape (the "wider mix" profile): 2–3 seeds with >=1 band/album anchor,
-// 0–2 vibes, 0–1 mutator. Weighting biases toward under-used nodes (novelty/R8).
-// Re-rolls against combo history so the same node set is never generated twice (AE3).
-// Rating-based weighting is intentionally NOT here yet — deferred.
+// Shape: a song is a band/album FUSION with optional garnish. Bands/albums are the
+// seed pool (2–3); themes are their OWN pool (0–1), so a theme is an optional subject,
+// not a co-equal seed; plus 0–2 vibes and 0–1 mutator. Weighting biases toward
+// under-used nodes (novelty/R8). Re-rolls against combo history so the same node set
+// is never generated twice (AE3). Rating-based weighting is deferred.
 
 import { comboSignature } from "./store.mjs";
 
 export const DEFAULT_SHAPE = {
-  seeds: [2, 3],
+  bands: [2, 3],   // band/album anchors (the seed pool)
+  themes: [0, 1],  // separate theme pool — at most one subject per song
   vibes: [0, 2],
   mutators: [0, 1],
-  requireAnchor: true, // >=1 band/album among the seeds
   maxRerolls: 25,
 };
 
@@ -41,37 +42,23 @@ function weightedSample(nodes, k, rng, weightOf) {
 
 function drawOnce(store, shape, rng) {
   const seeds = store.nodesByRole("seed");
+  const anchors = seeds.filter((n) => n.type === "band" || n.type === "album");
+  const themes = seeds.filter((n) => n.type === "theme");
   const vibes = store.nodesByRole("vibe");
   const mutators = store.nodesByRole("mutator");
 
-  const anchors = seeds.filter((n) => n.type === "band" || n.type === "album");
-  if (seeds.length < shape.seeds[0]) {
-    throw insufficient(`need at least ${shape.seeds[0]} seed nodes, have ${seeds.length}`);
-  }
-  if (shape.requireAnchor && anchors.length === 0) {
-    throw insufficient("no band/album seed available to anchor a song — add at least one");
+  if (anchors.length < shape.bands[0]) {
+    throw insufficient(`need at least ${shape.bands[0]} band/album nodes, have ${anchors.length}`);
   }
 
-  const nSeeds = Math.min(randInt(shape.seeds[0], shape.seeds[1], rng), seeds.length);
+  const nBands = Math.min(randInt(shape.bands[0], shape.bands[1], rng), anchors.length);
+  const nThemes = Math.min(randInt(shape.themes[0], shape.themes[1], rng), themes.length);
   const nVibes = Math.min(randInt(shape.vibes[0], shape.vibes[1], rng), vibes.length);
   const nMut = Math.min(randInt(shape.mutators[0], shape.mutators[1], rng), mutators.length);
 
-  let chosenSeeds;
-  if (shape.requireAnchor) {
-    const anchor = weightedSample(anchors, 1, rng, novelty)[0];
-    const rest = weightedSample(
-      seeds.filter((s) => s.id !== anchor.id),
-      nSeeds - 1,
-      rng,
-      novelty
-    );
-    chosenSeeds = [anchor, ...rest];
-  } else {
-    chosenSeeds = weightedSample(seeds, nSeeds, rng, novelty);
-  }
-
   return {
-    seeds: chosenSeeds,
+    seeds: weightedSample(anchors, nBands, rng, novelty), // the band/album fusion
+    themes: weightedSample(themes, nThemes, rng, novelty), // optional subject
     vibes: weightedSample(vibes, nVibes, rng, novelty),
     mutators: weightedSample(mutators, nMut, rng, novelty),
   };
@@ -90,7 +77,7 @@ export function sampleCombo(store, opts = {}) {
 
   for (let attempt = 0; attempt < shape.maxRerolls; attempt++) {
     const combo = drawOnce(store, shape, rng);
-    const nodeIds = [...combo.seeds, ...combo.vibes, ...combo.mutators].map((n) => n.id);
+    const nodeIds = [...combo.seeds, ...combo.themes, ...combo.vibes, ...combo.mutators].map((n) => n.id);
     if (!store.comboExists(nodeIds)) {
       return { ...combo, nodeIds, signature: comboSignature(nodeIds) };
     }
