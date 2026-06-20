@@ -84,15 +84,50 @@ Write a JSON brief (the `song.json` shape) and save it under `briefs/`:
 }
 ```
 
+`make_instrumental` and `model` are optional — the store keeps them as metadata, but the
+browser generation path does **not** apply them (it fills lyrics, style, and title only).
+[`briefs/EXAMPLE.json`](../../../briefs/EXAMPLE.json) shows them with that caveat; omit
+them unless you have a reason to record the intent.
+
 ## Generate + record
 
+First confirm the tunnel and a `/create` tab are live, then generate **and record in one step**:
+
 ```bash
-node src/suno.mjs briefs/<your-brief>.json     # switches to Advanced, fills, clicks Create
+node src/suno.mjs --check                          # CDP up? a suno.com/create tab open?
+node src/suno.mjs briefs/<your-brief>.json --record  # fill, Create, capture clip ids, store lineage+artifacts
 ```
 
-Solve the hCaptcha in the browser if one appears (often none does). Two takes land in
-the Suno feed. Then record the song so the graph remembers it and the sampler never
-repeats the combo:
+A successful run prints `✓ Generation started — clip ids: …` then `↳ recorded song #N`.
+`--record` only writes when generation actually started (clips captured), so a drifted
+form or a silent no-op never pollutes the graph. Solve the hCaptcha in the browser if one
+appears (often none does). Omit `--record` if you want to eyeball the takes in the feed
+before storing — then record by hand (snippet below).
+
+### If fill fails ("Suno selectors may have drifted")
+
+The driver aborts *before* clicking Create when a field doesn't fill (`lyricsOk` /
+`stylesOk` false), so you never spend credits on a blank form. Suno rotates its
+placeholder text, so selectors keyed on it rot. Probe the live page and patch `SEL` in
+`src/suno.mjs` — prefer a structural `data-testid` (e.g. `create-form-styles-wrapper`)
+over placeholder text:
+
+```bash
+node --input-type=module -e '
+import { connect } from "./src/suno.mjs"; import { config } from "./src/config.mjs";
+const b = await connect(config.cdpUrl);
+const p = b.contexts()[0].pages().find(x => x.url().includes("suno.com"));
+console.log(JSON.stringify(await p.evaluate(() => [...document.querySelectorAll("textarea,input")]
+  .map(e => ({ ph: e.placeholder?.slice(0,40), testid: e.dataset.testid,
+               wrap: e.closest("[data-testid]")?.dataset.testid }))), null, 2));
+await b.close();'
+```
+
+### Record by hand (only if you skipped `--record`)
+
+`--record` is the normal path. Record by hand only when you generated without it — e.g.
+you wanted to listen first. Storing the clip ids / audio urls is what lets the graph point
+back at the actual audio, not just the lyrics:
 
 ```bash
 node --input-type=module -e '
@@ -100,19 +135,37 @@ import { openStore } from "./src/store.mjs";
 import { config } from "./src/config.mjs";
 import { readFile } from "node:fs/promises";
 const b = JSON.parse(await readFile(process.argv[1], "utf8"));
+const clipIds = JSON.parse(process.argv[2] || "[]");   // from the driver output
+const audioUrls = JSON.parse(process.argv[3] || "[]");
 const s = openStore(config.dbPath);
 const id = s.recordSong({
   title: b.title, concept: b._concept, tags: b.tags, prompt: b.prompt,
-  negative_tags: b.negative_tags, inspirationNodeIds: b._nodeIds, status: "complete",
+  negative_tags: b.negative_tags, inspirationNodeIds: b._nodeIds,
+  clipIds, audioUrls, status: clipIds.length ? "complete" : "pending",
 });
 console.log("recorded song #" + id + " — " + b.title);
-s.close();' briefs/<your-brief>.json
+s.close();' briefs/<your-brief>.json '<clipIds-json>' '<audioUrls-json>'
 ```
 
-(The store saves title, style, lyrics, negative tags, and lineage for every song.)
+(The store saves title, style, lyrics, negative tags, clip ids, audio urls, and lineage.)
+
+### Listen + rate — this is how taste compounds
+
+Once you've heard the takes, record a verdict. Ratings feed back into what's worth
+sampling; skipping this dead-ends the loop:
+
+```bash
+node --input-type=module -e '
+import { openStore } from "./src/store.mjs"; import { config } from "./src/config.mjs";
+const s = openStore(config.dbPath);
+s.rate(Number(process.argv[1]), process.argv[2], process.argv[3] || null);  // <songId> up|down "note"
+s.close();' <songId> up "best take nails the warm-music/cold-words tension"
+```
 
 ## Quality bar — check before you ship a brief
 
+- **Run the name-leak guard** — it's a hard safety invariant, so verify it, don't eyeball it:
+  `node --input-type=module -e 'import{assertNoNameLeak}from"./src/suno.mjs";import{readFile}from"node:fs/promises";assertNoNameLeak(JSON.parse(await readFile(process.argv[1],"utf8"))).then(()=>console.log("✓ no name leak")).catch(e=>console.log("✋ "+e.message))' briefs/<your-brief>.json`
 - Could a fan recognize the bands from `tags` **alone**, with no names?
 - Do the lyrics *earn* the vibe, or just assert it?
 - Is every mutator visibly **applied**, not just referenced?

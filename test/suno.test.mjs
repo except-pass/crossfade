@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { SEL, isCaptchaFrameUrl, robustFill, clickCreate, findNameLeak, assertNoNameLeak } from "../src/suno.mjs";
+import { SEL, isCaptchaFrameUrl, robustFill, clickCreate, findNameLeak, assertNoNameLeak, recordGeneratedSong } from "../src/suno.mjs";
 import { openStore } from "../src/store.mjs";
 
 // --- minimal Playwright stubs (no real browser) ---
@@ -71,12 +71,24 @@ test("robustFill returns false when the field isn't present", async () => {
   assert.equal(await robustFill(page, SEL.styles, "hi"), false);
 });
 
-function stubPage(frameUrls) {
+function stubPage(frameUrls, { responses = [] } = {}) {
+  const handlers = { response: [] };
   return {
-    getByRole: () => ({ first: () => ({ async count() { return 1; }, async click() {} }) }),
+    getByRole: () => ({ first: () => ({ async count() { return 1; }, async click() {
+      // On submit, replay any canned generation responses to the registered listeners.
+      for (const r of responses) for (const fn of handlers.response) await fn(r);
+    } }) }),
+    on: (event, fn) => { (handlers[event] ||= []).push(fn); },
+    off: (event, fn) => { handlers[event] = (handlers[event] || []).filter((f) => f !== fn); },
     async waitForTimeout() {}, // instant — no real delay in tests
+    async screenshot() {},
     frames: () => frameUrls.map((url) => ({ url: () => url, locator: () => ({ async count() { return 0; } }) })),
   };
+}
+
+// A canned Playwright-style response carrying a Suno-shaped generate payload.
+function stubResponse(url, body) {
+  return { url: () => url, headers: () => ({ "content-type": "application/json" }), async json() { return body; } };
 }
 
 test("clickCreate detects an hCaptcha frame", async () => {
@@ -87,6 +99,60 @@ test("clickCreate detects an hCaptcha frame", async () => {
 test("clickCreate reports no captcha when none appears", async () => {
   const res = await clickCreate(stubPage(["about:blank", "https://suno.com/create"]));
   assert.equal(res.captchaPresent, false);
+});
+
+test("clickCreate captures clip ids from the generate response", async () => {
+  const body = { clips: [
+    { id: "58d8ecfa-61cf-42be-9229-ebe857974778", status: "submitted", audio_url: "https://cdn.suno.ai/a.mp3" },
+    { id: "68eba274-5c05-4146-a378-283feab268b5", status: "submitted", audio_url: null },
+  ] };
+  const page = stubPage(["about:blank", "https://suno.com/create"], {
+    responses: [stubResponse("https://studio-api.suno.ai/api/generate/v2/", body)],
+  });
+  const res = await clickCreate(page);
+  assert.equal(res.started, true);
+  assert.deepEqual(res.clipIds, [
+    "58d8ecfa-61cf-42be-9229-ebe857974778",
+    "68eba274-5c05-4146-a378-283feab268b5",
+  ]);
+  // real audio_url is kept; missing one falls back to the song page url
+  assert.equal(res.audioUrls[0], "https://cdn.suno.ai/a.mp3");
+  assert.equal(res.audioUrls[1], "https://suno.com/song/68eba274-5c05-4146-a378-283feab268b5");
+});
+
+test("clickCreate reports not-started when no clips come back", async () => {
+  const res = await clickCreate(stubPage(["about:blank", "https://suno.com/create"]));
+  assert.equal(res.started, false);
+  assert.deepEqual(res.clipIds, []);
+});
+
+test("recordGeneratedSong stores brief + captured clips as complete", () => {
+  const s = openStore(":memory:");
+  const band = s.addNode("seed", "band", "Some Band").id;
+  const brief = {
+    title: "A Title", _concept: "why", tags: "style", prompt: "[Verse 1]\nwords",
+    negative_tags: "no", _nodeIds: [band],
+  };
+  const result = { started: true, clipIds: ["id-1", "id-2"], audioUrls: ["u1", "u2"] };
+  const rec = recordGeneratedSong(brief, result, { store: s });
+  assert.equal(rec.status, "complete");
+  const song = s.getSong(rec.songId);
+  assert.deepEqual(song.clip_ids, ["id-1", "id-2"]);
+  assert.deepEqual(song.audio_urls, ["u1", "u2"]);
+  // a re-run of the same combo is skipped, not thrown
+  const again = recordGeneratedSong(brief, result, { store: s });
+  assert.equal(again.skipped, "combo_exists");
+  s.close();
+});
+
+test("recordGeneratedSong stores pending when no clips captured", () => {
+  const s = openStore(":memory:");
+  const band = s.addNode("seed", "band", "Other Band").id;
+  const brief = { title: "Pending One", tags: "x", prompt: "y", _nodeIds: [band] };
+  const rec = recordGeneratedSong(brief, { started: false, clipIds: [] }, { store: s });
+  assert.equal(rec.status, "pending");
+  assert.equal(s.getSong(rec.songId).status, "pending");
+  s.close();
 });
 
 test("findNameLeak flags the field carrying a real band name", () => {

@@ -14,12 +14,14 @@
 import { chromium } from "playwright-core";
 import { readFile } from "node:fs/promises";
 import { config } from "./config.mjs";
-import { containsName } from "./store.mjs";
+import { containsName, openStore } from "./store.mjs";
 
 export const SEL = {
   advancedTab: "Advanced",
   lyrics: '[data-testid="lyrics-textarea"]',
-  styles: 'textarea[placeholder*="electro"], textarea[placeholder*="guitar riffs"]',
+  // Anchor on the structural wrapper test-id (stable) rather than placeholder text,
+  // which Suno rotates (was "electro"/"guitar riffs", later "house pop, psy, ...").
+  styles: '[data-testid="create-form-styles-wrapper"] textarea, textarea[placeholder*="electro"], textarea[placeholder*="guitar riffs"]',
   title: 'input[placeholder*="title" i], textarea[placeholder*="title" i], input[aria-label*="title" i]',
   createBtn: "Create song",
 };
@@ -97,28 +99,70 @@ export async function fillBrief(page, brief) {
   return { lyricsOk, stylesOk, titleOk };
 }
 
-// Click "Create song" and watch briefly for the hCaptcha the user must solve.
-export async function clickCreate(page, { screenshotPath } = {}) {
-  const createBtn = page.getByRole("button", { name: SEL.createBtn }).first();
-  if (!(await createBtn.count())) throw new Error('"Create song" button not found');
-  await createBtn.click();
+// Walk a JSON response body collecting Suno clip records — an object that carries a
+// UUID `id` alongside a clip-ish sibling (audio_url / status / metadata). Captures the
+// real generated clip ids straight from the generate response, so we never have to
+// guess them off the feed DOM (which mixes in every older song).
+export function collectClips(node, out, depth = 0) {
+  if (!node || depth > 8) return;
+  if (Array.isArray(node)) {
+    for (const x of node) collectClips(x, out, depth + 1);
+    return;
+  }
+  if (typeof node === "object") {
+    const clipish = "audio_url" in node || "status" in node || "metadata" in node;
+    if (clipish && typeof node.id === "string" && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(node.id)) {
+      out.set(node.id, node.audio_url || out.get(node.id) || null);
+    }
+    for (const k of Object.keys(node)) collectClips(node[k], out, depth + 1);
+  }
+}
 
-  let captchaPresent = false;
-  for (let i = 0; i < 8 && !captchaPresent; i++) {
-    await page.waitForTimeout(1500);
-    if (page.frames().some((f) => isCaptchaFrameUrl(f.url()))) captchaPresent = true;
-    if (!captchaPresent) {
-      for (const f of page.frames()) {
-        const hit = await f.locator(".challenge-container, [class*=challenge]").count().catch(() => 0);
-        if (hit) {
-          captchaPresent = true;
-          break;
+// Click "Create song", watch briefly for the hCaptcha the user must solve, and capture
+// the generated clip ids from the generation response so the caller can confirm the run
+// actually started (not a silent no-op) and record the real artifacts in the graph.
+export async function clickCreate(page, { screenshotPath } = {}) {
+  // Listen BEFORE the click — the generate POST fires immediately on submit.
+  const clips = new Map(); // id -> audio_url | null
+  const onResp = async (resp) => {
+    try {
+      if (!/generate|clip|feed|project/i.test(resp.url())) return;
+      if (!(resp.headers()["content-type"] || "").includes("json")) return;
+      collectClips(await resp.json(), clips);
+    } catch {
+      /* non-JSON or torn-down response — ignore */
+    }
+  };
+  page.on("response", onResp);
+
+  try {
+    const createBtn = page.getByRole("button", { name: SEL.createBtn }).first();
+    if (!(await createBtn.count())) throw new Error('"Create song" button not found');
+    await createBtn.click();
+
+    let captchaPresent = false;
+    // Poll long enough to (a) catch a captcha and (b) let the generate response land.
+    for (let i = 0; i < 8 && !captchaPresent && clips.size < 2; i++) {
+      await page.waitForTimeout(1500);
+      if (page.frames().some((f) => isCaptchaFrameUrl(f.url()))) captchaPresent = true;
+      if (!captchaPresent) {
+        for (const f of page.frames()) {
+          const hit = await f.locator(".challenge-container, [class*=challenge]").count().catch(() => 0);
+          if (hit) {
+            captchaPresent = true;
+            break;
+          }
         }
       }
     }
+    if (screenshotPath) await page.screenshot({ path: screenshotPath }).catch(() => {});
+
+    const clipIds = [...clips.keys()].slice(0, 2);
+    const audioUrls = clipIds.map((id) => clips.get(id) || `https://suno.com/song/${id}`);
+    return { captchaPresent, clipIds, audioUrls, started: clipIds.length > 0 };
+  } finally {
+    page.off("response", onResp);
   }
-  if (screenshotPath) await page.screenshot({ path: screenshotPath }).catch(() => {});
-  return { captchaPresent };
 }
 
 // First brief field containing one of `names` as whole words, or null (KTD-6).
@@ -181,6 +225,36 @@ export async function generateSong(brief, opts = {}) {
   }
 }
 
+// Persist a generated brief to the store in one step — lineage plus the clip artifacts
+// the driver captured — so the agent never has to hand-marshal clip ids through argv.
+// status is "complete" when clips were captured, else "pending". A re-run of an already
+// generated combo is returned as { skipped } rather than thrown, so --record is safe to
+// retry. Pure-ish: the only side effect is the store write.
+export function recordGeneratedSong(brief, result = {}, { dbPath, store } = {}) {
+  const s = store || openStore(dbPath || config.dbPath);
+  try {
+    const clipIds = result.clipIds || [];
+    const songId = s.recordSong({
+      title: brief.title,
+      concept: brief._concept,
+      tags: brief.tags,
+      prompt: brief.prompt,
+      negative_tags: brief.negative_tags,
+      model: brief.model,
+      inspirationNodeIds: brief._nodeIds || [],
+      clipIds,
+      audioUrls: result.audioUrls || [],
+      status: clipIds.length ? "complete" : "pending",
+    });
+    return { songId, status: clipIds.length ? "complete" : "pending" };
+  } catch (e) {
+    if (e.code === "COMBO_EXISTS") return { skipped: "combo_exists", message: e.message };
+    throw e;
+  } finally {
+    if (!store) s.close();
+  }
+}
+
 // Connectivity preflight — is the tunnel up and a usable tab reachable?
 export async function checkConnection(cdpUrl = config.cdpUrl) {
   const browser = await connect(cdpUrl);
@@ -202,7 +276,7 @@ export async function checkConnection(cdpUrl = config.cdpUrl) {
   }
 }
 
-// CLI: `node src/suno.mjs --check` | `node src/suno.mjs <brief.json> [--fill-only]`
+// CLI: `node src/suno.mjs --check` | `node src/suno.mjs <brief.json> [--record] [--fill-only]`
 if (import.meta.url === `file://${process.argv[1]}`) {
   const args = process.argv.slice(2);
   if (args.includes("--check")) {
@@ -221,7 +295,7 @@ if (import.meta.url === `file://${process.argv[1]}`) {
   } else {
     const briefPath = args.find((a) => !a.startsWith("--"));
     if (!briefPath) {
-      console.error("usage: node src/suno.mjs <brief.json> [--fill-only] | --check");
+      console.error("usage: node src/suno.mjs <brief.json> [--record] [--fill-only] | --check");
       process.exit(1);
     }
     const brief = JSON.parse(await readFile(briefPath, "utf8"));
@@ -230,6 +304,22 @@ if (import.meta.url === `file://${process.argv[1]}`) {
       .then((r) => {
         console.log(JSON.stringify(r, null, 2));
         if (r.captchaPresent) console.log("\n→ Solve the hCaptcha in the browser to start generation.");
+        else if (r.filled && !r.started && !args.includes("--fill-only"))
+          console.warn(
+            "\n⚠ Clicked Create but captured no clip ids — generation may not have started. " +
+              "Check the Suno feed before recording this as complete."
+          );
+        else if (r.started) console.log(`\n✓ Generation started — clip ids: ${r.clipIds.join(", ")}`);
+
+        // --record: persist lineage + captured clips in the same step. Only record once
+        // generation actually started — a not-started run shouldn't pollute the graph.
+        if (args.includes("--record") && r.started) {
+          const rec = recordGeneratedSong(brief, r);
+          if (rec.skipped) console.log(`\n↳ not recorded — ${rec.message}`);
+          else console.log(`\n↳ recorded song #${rec.songId} (${rec.status}) — ${brief.title}`);
+        } else if (args.includes("--record") && !r.started && !args.includes("--fill-only")) {
+          console.log("\n↳ not recorded — generation didn't start; fix and re-run, then --record.");
+        }
       })
       .catch((e) => {
         if (e.code === "NAME_LEAK") {
