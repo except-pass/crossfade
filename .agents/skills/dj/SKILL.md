@@ -49,10 +49,22 @@ draw several distinct ones first, then write each.
    gender-swap → write for the opposite lead vocal; duet → two voices; set-a-decade-earlier
    → period the sound and the references; flip-the-POV → rewrite the vantage; unresolved-chord
    → an outro that doesn't resolve. A mutator mentioned but not applied is a failure.
-5. **Lyrics use Suno `[Section]` tags** — `[Intro]`, `[Verse 1]`, `[Pre-Chorus]`,
-   `[Chorus]`, `[Verse 2]`, `[Bridge]`, `[Final Chorus]`, `[Outro]`. A spoken-word
-   bridge often lands. **Counterpoint is gold:** big radiant music under quiet,
-   devastating words (and vice-versa).
+5. **Lyrics (`prompt`) contain ONLY bare section tags and the words that get sung —
+   nothing else.** Suno honors structural tags: `[Intro]`, `[Verse 1]`, `[Pre-Chorus]`,
+   `[Chorus]`, `[Bridge]`, `[Final Chorus]`, `[Outro]`. It does **not** honor stage
+   directions — it will *sing or speak them aloud*. Therefore:
+   - Keep section tags **bare**: `[Bridge]`, never `[Bridge - spoken, breathless over synths]`.
+   - **No parentheticals or cues in the lyrics**: no `(strings crash in)`, no
+     `(drum machine stutters)`, no `(imagine the strings here)`, no `(spoken)`, no
+     delivery/instrumentation/dynamics notes.
+   - **Every performance, instrumentation, production, dynamics, and arrangement
+     instruction goes in `tags` instead** — "spoken-word bridge", "quiet-to-loud
+     builds", "gated drums slamming in on the final chorus", "doubled vocals",
+     "tape hiss", "saxophone outro". `tags` directs the *sound*; `prompt` is *only the
+     words*. Want a spoken bridge? Say "spoken-word bridge" in `tags` and just write
+     the bridge's words under a bare `[Bridge]`.
+   - **Counterpoint is still gold** — big radiant music under quiet devastating words —
+     but you achieve it by describing the music in `tags`, not by annotating the lyrics.
 6. **No theme in the combo?** You choose the subject — pick one that fits the sonic
    blend and the vibe.
 
@@ -105,6 +117,8 @@ s.close();' briefs/<your-brief>.json
 - Do the lyrics *earn* the vibe, or just assert it?
 - Is every mutator visibly **applied**, not just referenced?
 - Is the title evocative and name-free?
+- **Do the lyrics contain ONLY bare section tags and sung words** — no parentheticals,
+  no annotated headers, no stage directions? (All of that belongs in `tags`.)
 
-Worked examples live in `briefs/` (e.g. `briefs/01-same-bar.json`,
-`briefs/03-county-fair.json`).
+Worked examples live in `briefs/` — see `briefs/08-*.json` onward for the clean
+lyrics-hygiene shape (earlier briefs predate rule 5 and have directions inline).
