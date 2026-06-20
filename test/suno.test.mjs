@@ -1,6 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { SEL, isCaptchaFrameUrl, robustFill, clickCreate, findNameLeak } from "../src/suno.mjs";
+import { SEL, isCaptchaFrameUrl, robustFill, clickCreate, findNameLeak, assertNoNameLeak } from "../src/suno.mjs";
+import { openStore } from "../src/store.mjs";
 
 // --- minimal Playwright stubs (no real browser) ---
 function stubLocator({ count = 1, fillThrows = false } = {}) {
@@ -100,4 +101,23 @@ test("findNameLeak flags the field carrying a real band name", () => {
     "descriptor-only brief passes"
   );
   assert.equal(findNameLeak({ tags: "kisses in the rain" }, ["Kiss"]), null, "whole-word only");
+});
+
+test("assertNoNameLeak: lineage hit, inventory fallback, and clean pass", async () => {
+  const s = openStore(":memory:");
+  const band = s.addNode("seed", "band", "Taylor Swift");
+
+  // lineage hit — name in tags, checked against the brief's own anchor
+  await assert.rejects(
+    assertNoNameLeak({ tags: "like Taylor Swift", _nodeIds: [band.id] }, { store: s }),
+    (e) => e.code === "NAME_LEAK"
+  );
+  // no _nodeIds -> falls back to the whole inventory and still catches it
+  await assert.rejects(
+    assertNoNameLeak({ tags: "like Taylor Swift" }, { store: s }),
+    (e) => e.code === "NAME_LEAK"
+  );
+  // descriptor-only brief resolves without throwing
+  await assertNoNameLeak({ tags: "bright confessional synth-pop", _nodeIds: [band.id] }, { store: s });
+  s.close();
 });

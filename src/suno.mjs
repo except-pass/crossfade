@@ -133,9 +133,9 @@ export function findNameLeak(brief, names) {
 // Name-leak guard at the function boundary: every generation path (CLI or a future
 // programmatic caller) is covered. Checks the brief's lineage anchors, falling back
 // to the whole inventory. Pass { skipGuard: true } only if you've guarded upstream.
-async function assertNoNameLeak(brief, opts) {
-  const { openStore } = await import("./store.mjs");
-  const store = openStore(opts.dbPath || config.dbPath);
+export async function assertNoNameLeak(brief, opts = {}) {
+  const store = opts.store || (await import("./store.mjs")).openStore(opts.dbPath || config.dbPath);
+  const ownStore = !opts.store;
   try {
     const lineage = Array.isArray(brief._nodeIds)
       ? brief._nodeIds.map((id) => store.getNode(id)).filter(Boolean)
@@ -149,7 +149,7 @@ async function assertNoNameLeak(brief, opts) {
       throw err;
     }
   } finally {
-    store.close();
+    if (ownStore) store.close();
   }
 }
 
@@ -187,10 +187,14 @@ export async function checkConnection(cdpUrl = config.cdpUrl) {
   try {
     const ctx = browser.contexts()[0];
     const pages = ctx ? ctx.pages().map((p) => p.url()) : [];
+    // sunoTab must be the /create tab — that's the precondition generateSong needs.
+    const createTab = pages.find((u) => u.includes("suno.com/create")) ?? null;
+    const sunoTab = pages.find((u) => u.includes("suno.com")) ?? null;
     return {
       ok: true,
       version: typeof browser.version === "function" ? browser.version() : undefined,
-      sunoTab: pages.find((u) => u.includes("suno.com")) ?? null,
+      sunoTab: createTab,
+      signedInButNotOnCreate: !createTab && sunoTab ? sunoTab : undefined,
       pageCount: pages.length,
     };
   } finally {
@@ -205,6 +209,9 @@ if (import.meta.url === `file://${process.argv[1]}`) {
     checkConnection()
       .then((r) => {
         console.log(JSON.stringify(r, null, 2));
+        if (!r.sunoTab && r.signedInButNotOnCreate) {
+          console.error("\n→ Connected, but no suno.com/create tab — open https://suno.com/create in that Chrome.");
+        }
         process.exit(r.sunoTab ? 0 : 3);
       })
       .catch((e) => {

@@ -109,7 +109,7 @@ function parseSong(row) {
 
 export function openStore(dbPath = ":memory:") {
   const db = new Database(dbPath);
-  db.pragma("journal_mode = WAL");
+  if (dbPath !== ":memory:") db.pragma("journal_mode = WAL"); // WAL is a no-op for :memory:
   db.pragma("foreign_keys = ON");
   db.exec(SCHEMA);
 
