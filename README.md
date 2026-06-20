@@ -82,7 +82,7 @@ machine over an SSH tunnel is possible but advanced — see
 git clone git@github.com:except-pass/crossfade.git
 cd crossfade
 npm install
-npm test          # 18 node:test cases — sanity check
+npm test          # the node:test suite — expect all green
 ```
 
 ### Launch a debug Chrome and log into Suno
@@ -151,7 +151,7 @@ node bin/crossfade.mjs sample
 **3. Write the brief.** Today *you* are the DJ (an automated DJ agent is on the
 roadmap). Copy a brief and edit it — the only rule is **no real band names in the
 fields you send to Suno**; translate the sound into descriptors. A full worked
-example lives in [`briefs/01-same-bar.json`](briefs/01-same-bar.json). The shape:
+example lives in [`briefs/EXAMPLE.json`](briefs/EXAMPLE.json). The shape:
 
 ```json
 {
@@ -168,7 +168,7 @@ example lives in [`briefs/01-same-bar.json`](briefs/01-same-bar.json). The shape
 **4. Generate it.**
 
 ```bash
-node src/suno.mjs briefs/01-same-bar.json
+node src/suno.mjs briefs/EXAMPLE.json
 ```
 
 crossfade switches your Suno tab to **Advanced**, fills lyrics/style/title, and clicks

@@ -61,6 +61,9 @@ async function main() {
     await new Promise((r) => setTimeout(r, 5000));
     const infoRes = await fetch(`${API}/api/get?ids=${ids.join(",")}`);
     const info = await j(infoRes);
+    if (!Array.isArray(info)) {
+      throw new Error(`Polling failed (${infoRes.status}): ${JSON.stringify(info)}`);
+    }
     const done = info.filter((c) => c.audio_url);
     process.stdout.write(`\r  polling... ${done.length}/${ids.length} ready  `);
     if (done.length === info.length) {

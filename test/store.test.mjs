@@ -95,6 +95,16 @@ test("song persists with concept, exact inputs, clip ids/urls, and lineage", () 
   s.close();
 });
 
+test("recordSong rejects a non-existent inspiration node id", () => {
+  const s = freshStore();
+  const band = s.addNode("seed", "band", "A");
+  assert.throws(
+    () => s.recordSong({ title: "x", inspirationNodeIds: [band.id, 99999] }),
+    (e) => e.code === "NO_SUCH_NODE"
+  );
+  s.close();
+});
+
 test("lineage queries resolve both directions", () => {
   const s = freshStore();
   const band = s.addNode("seed", "band", "Band Alpha");

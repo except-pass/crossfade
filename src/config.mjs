@@ -5,6 +5,7 @@
 const env = process.env;
 
 function num(value, fallback) {
+  if (value == null || String(value).trim() === "") return fallback; // empty env var -> fallback, not 0
   const n = Number(value);
   return Number.isFinite(n) ? n : fallback;
 }

@@ -236,6 +236,18 @@ export function openStore(dbPath = ":memory:") {
       } = song;
       if (!title) throw new Error("song.title is required");
 
+      // Every inspiration id must resolve to a real node — otherwise INSERT OR IGNORE
+      // would silently drop the edge while the combo signature still records the id,
+      // leaving a song whose fingerprint doesn't match its actual lineage.
+      const ids = [...new Set(inspirationNodeIds.map(Number))];
+      for (const nodeId of ids) {
+        if (!q.nodeById.get(nodeId)) {
+          const err = new Error(`no such node: ${nodeId}`);
+          err.code = "NO_SUCH_NODE";
+          throw err;
+        }
+      }
+
       const signature = comboSignature(inspirationNodeIds);
       if (signature && this.comboExists(inspirationNodeIds)) {
         const err = new Error(`combo already generated: ${signature}`);

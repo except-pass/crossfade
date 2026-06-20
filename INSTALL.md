@@ -129,7 +129,7 @@ it to `briefs/first-song.json`. The rules that matter most:
   directions, no parentheticals. All performance/instrumentation direction goes in `tags`.
 - Apply any **vibe** (affect) and **mutator** (an operation applied last).
 
-`briefs/01-same-bar.json` and `briefs/08-the-quiet-we-wanted.json` are worked examples.
+`briefs/EXAMPLE.json` is the worked template.
 
 ### 6. 🧑 HUMAN — generate
 
