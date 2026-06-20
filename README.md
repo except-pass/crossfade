@@ -1,4 +1,8 @@
-# crossfade
+<p align="center">
+  <img src="logos/crossfade-banner.png" alt="crossfade" width="640">
+</p>
+
+<p align="center"><em>The infinite radio station of songs you'll actually like.</em></p>
 
 **A personal radio station for [Suno](https://suno.com).** You seed a graph of the
 bands, themes, vibes, and "mutators" you love. crossfade samples them into
