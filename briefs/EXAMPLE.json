@@ -1,5 +1,6 @@
 {
   "_combo": "<band(s)> × <optional theme> · vibe: <vibe> · mutator: <mutator>  — a template; replace with your real draw from `crossfade sample`",
+  "_note": "The browser path fills lyrics (prompt), style (tags), and title only. negative_tags / make_instrumental / model are stored in the graph as metadata but are NOT applied by the current browser generation path.",
   "_nodeIds": [],
   "_concept": "Two or three sentences: what this song is and why the combo is interesting. Real band names live here and in the graph for lineage — never in the fields sent to Suno.",
   "title": "An Evocative Title (never a band name)",

@@ -1,6 +1,7 @@
 import { chromium } from "playwright-core";
 const browser = await chromium.connectOverCDP(process.env.CDP_URL || "http://127.0.0.1:9222");
 const page = browser.contexts()[0].pages().find(p=>p.url().includes("suno.com/create"));
+if (!page) { console.log("no suno create tab"); process.exit(1); }
 const btns = await page.evaluate(() => [...document.querySelectorAll('button,[role=button]')].map((b)=>({
   text:(b.innerText||'').trim().slice(0,40), aria:b.getAttribute('aria-label'),
   tid:b.getAttribute('data-testid'), disabled:b.disabled,

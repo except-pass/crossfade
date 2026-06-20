@@ -14,6 +14,7 @@
 import { chromium } from "playwright-core";
 import { readFile } from "node:fs/promises";
 import { config } from "./config.mjs";
+import { containsName } from "./store.mjs";
 
 export const SEL = {
   advancedTab: "Advanced",
@@ -120,8 +121,44 @@ export async function clickCreate(page, { screenshotPath } = {}) {
   return { captchaPresent };
 }
 
-// End-to-end: fill the brief and (unless fillOnly) click Create.
+// First brief field containing one of `names` as whole words, or null (KTD-6).
+export function findNameLeak(brief, names) {
+  for (const field of ["tags", "prompt", "title"]) {
+    const name = names.find((n) => containsName(brief[field], n));
+    if (name) return { field, name };
+  }
+  return null;
+}
+
+// Name-leak guard at the function boundary: every generation path (CLI or a future
+// programmatic caller) is covered. Checks the brief's lineage anchors, falling back
+// to the whole inventory. Pass { skipGuard: true } only if you've guarded upstream.
+async function assertNoNameLeak(brief, opts) {
+  const { openStore } = await import("./store.mjs");
+  const store = openStore(opts.dbPath || config.dbPath);
+  try {
+    const lineage = Array.isArray(brief._nodeIds)
+      ? brief._nodeIds.map((id) => store.getNode(id)).filter(Boolean)
+      : [];
+    const anchors = lineage.filter((n) => n.type === "band" || n.type === "album").map((n) => n.name);
+    const leak = findNameLeak(brief, anchors.length ? anchors : store.anchorNames());
+    if (leak) {
+      const err = new Error(`name-leak: "${leak.name}" appears in the brief's ${leak.field}`);
+      err.code = "NAME_LEAK";
+      err.leak = leak;
+      throw err;
+    }
+  } finally {
+    store.close();
+  }
+}
+
+// End-to-end: guard names, fill the brief, and (unless fillOnly) click Create.
+// Note: the browser path fills lyrics/style/title only. negative_tags/model/
+// make_instrumental are recorded in the graph as metadata but are not applied here.
 export async function generateSong(brief, opts = {}) {
+  if (!opts.skipGuard) await assertNoNameLeak(brief, opts);
+
   const browser = await connect(opts.cdpUrl || config.cdpUrl);
   try {
     const page = await findCreatePage(browser);
@@ -129,6 +166,13 @@ export async function generateSong(brief, opts = {}) {
     if (opts.fillOnly) {
       if (opts.screenshotPath) await page.screenshot({ path: opts.screenshotPath }).catch(() => {});
       return { filled };
+    }
+    // Don't click Create on a half-filled form — a drifted selector would otherwise
+    // spend credits (and a paid captcha solve) on a blank generation.
+    if (!filled.lyricsOk || !filled.stylesOk) {
+      throw new Error(
+        `form fill failed (lyrics: ${filled.lyricsOk}, styles: ${filled.stylesOk}) — Suno selectors may have drifted; aborting before Create`
+      );
     }
     const created = await clickCreate(page, { screenshotPath: opts.screenshotPath });
     return { filled, ...created };
@@ -174,28 +218,6 @@ if (import.meta.url === `file://${process.argv[1]}`) {
       process.exit(1);
     }
     const brief = JSON.parse(await readFile(briefPath, "utf8"));
-
-    // Name-leak guard (KTD-6): a real band/album name must never reach Suno. Check the
-    // fields against the brief's lineage anchors (or the whole inventory if it has none).
-    const { openStore, containsName } = await import("./store.mjs");
-    const store = openStore(config.dbPath);
-    const lineage = Array.isArray(brief._nodeIds)
-      ? brief._nodeIds.map((id) => store.getNode(id)).filter(Boolean)
-      : [];
-    const anchors = lineage.filter((n) => n.type === "band" || n.type === "album").map((n) => n.name);
-    const guardNames = anchors.length ? anchors : store.anchorNames();
-    store.close();
-    for (const field of ["tags", "prompt", "title"]) {
-      const hit = guardNames.find((name) => containsName(brief[field], name));
-      if (hit) {
-        console.error(
-          `✋ name-leak guard: "${hit}" appears in the brief's ${field} — Suno blocks real band names. ` +
-            `Translate it to sonic descriptors and retry.`
-        );
-        process.exit(2);
-      }
-    }
-
     const screenshotPath = new URL("../gen-suno-harness.png", import.meta.url).pathname;
     generateSong(brief, { fillOnly: args.includes("--fill-only"), screenshotPath })
       .then((r) => {
@@ -203,6 +225,13 @@ if (import.meta.url === `file://${process.argv[1]}`) {
         if (r.captchaPresent) console.log("\n→ Solve the hCaptcha in the browser to start generation.");
       })
       .catch((e) => {
+        if (e.code === "NAME_LEAK") {
+          console.error(
+            `✋ name-leak guard: "${e.leak.name}" appears in the brief's ${e.leak.field} — ` +
+              `Suno blocks real band names. Translate it to sonic descriptors and retry.`
+          );
+          process.exit(2);
+        }
         console.error("generation failed:", e.message);
         process.exit(1);
       });

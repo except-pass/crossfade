@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { SEL, isCaptchaFrameUrl, robustFill, clickCreate } from "../src/suno.mjs";
+import { SEL, isCaptchaFrameUrl, robustFill, clickCreate, findNameLeak } from "../src/suno.mjs";
 
 // --- minimal Playwright stubs (no real browser) ---
 function stubLocator({ count = 1, fillThrows = false } = {}) {
@@ -86,4 +86,18 @@ test("clickCreate detects an hCaptcha frame", async () => {
 test("clickCreate reports no captcha when none appears", async () => {
   const res = await clickCreate(stubPage(["about:blank", "https://suno.com/create"]));
   assert.equal(res.captchaPresent, false);
+});
+
+test("findNameLeak flags the field carrying a real band name", () => {
+  const names = ["Taylor Swift", "The National"];
+  assert.deepEqual(
+    findNameLeak({ tags: "bright synthpop like Taylor Swift", prompt: "hi", title: "x" }, names),
+    { field: "tags", name: "Taylor Swift" }
+  );
+  assert.equal(
+    findNameLeak({ tags: "bright synthpop", prompt: "breathless verses", title: "Thirty-Seven Seconds" }, names),
+    null,
+    "descriptor-only brief passes"
+  );
+  assert.equal(findNameLeak({ tags: "kisses in the rain" }, ["Kiss"]), null, "whole-word only");
 });

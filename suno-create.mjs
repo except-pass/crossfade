@@ -5,6 +5,7 @@ const CDP = process.env.CDP_URL || "http://127.0.0.1:9223";
 const browser = await chromium.connectOverCDP(CDP);
 const ctx = browser.contexts()[0];
 const page = ctx.pages().find(p => p.url().includes("suno.com/create"));
+if (!page) { console.log("no suno create tab"); process.exit(1); }
 await page.bringToFront().catch(()=>{});
 
 const createBtn = page.getByRole("button", { name: "Create song" }).first();

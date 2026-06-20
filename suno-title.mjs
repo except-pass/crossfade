@@ -7,6 +7,7 @@ const song = JSON.parse(await readFile(new URL("./song.json", import.meta.url), 
 const browser = await chromium.connectOverCDP(CDP);
 const ctx = browser.contexts()[0];
 const page = ctx.pages().find(p => p.url().includes("suno.com/create"));
+if (!page) { console.log("no suno create tab"); process.exit(1); }
 await page.bringToFront().catch(()=>{});
 
 const title = page.locator('input[placeholder*="Song Title" i]').first();
