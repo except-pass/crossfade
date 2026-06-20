@@ -75,7 +75,7 @@ Write a JSON brief (the `song.json` shape) and save it under `briefs/`:
 ```json
 {
   "_combo": "<plain description of the draw>",
-  "_nodeIds": [<the exact node ids from the combo — used to record lineage>],
+  "_nodeIds": [<the exact node ids from the combo — used to record lineage AND to scope the name-leak guard to this song's anchors; always include them>],
   "_concept": "<2-3 sentences: what this song is and why the combo makes it interesting>",
   "title": "<evocative — NEVER a band name>",
   "tags": "<musical style: pure sonic descriptors, no names>",

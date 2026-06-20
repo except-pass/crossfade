@@ -2,7 +2,7 @@
 // Fill ONLY the title field robustly (lyrics+styles already filled). Does NOT click Create.
 import { chromium } from "playwright-core";
 import { readFile } from "node:fs/promises";
-const CDP = process.env.CDP_URL || "http://127.0.0.1:9223";
+const CDP = process.env.CDP_URL || "http://127.0.0.1:9222";
 const song = JSON.parse(await readFile(new URL("./song.json", import.meta.url), "utf8"));
 const browser = await chromium.connectOverCDP(CDP);
 const ctx = browser.contexts()[0];
