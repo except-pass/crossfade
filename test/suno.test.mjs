@@ -120,6 +120,29 @@ test("clickCreate captures clip ids from the generate response", async () => {
   assert.equal(res.audioUrls[1], "https://suno.com/song/68eba274-5c05-4146-a378-283feab268b5");
 });
 
+test("clickCreate ignores feed/project responses and captures only generate clips", async () => {
+  // A feed listing (every older song) arrives alongside the real generate response.
+  const feed = { clips: [
+    { id: "aaaaaaaa-1111-2222-3333-444444444444", status: "complete", audio_url: "https://cdn.suno.ai/old1.mp3" },
+    { id: "bbbbbbbb-1111-2222-3333-444444444444", status: "complete", audio_url: "https://cdn.suno.ai/old2.mp3" },
+  ] };
+  const gen = { clips: [
+    { id: "cccccccc-1111-2222-3333-444444444444", status: "submitted", audio_url: null },
+    { id: "dddddddd-1111-2222-3333-444444444444", status: "submitted", audio_url: null },
+  ] };
+  const page = stubPage(["about:blank", "https://suno.com/create"], {
+    responses: [
+      stubResponse("https://studio-api.suno.ai/api/feed/v2?ids=...", feed),     // must be ignored
+      stubResponse("https://studio-api.suno.ai/api/generate/v2/", gen),         // the real one
+    ],
+  });
+  const res = await clickCreate(page);
+  assert.deepEqual(res.clipIds, [
+    "cccccccc-1111-2222-3333-444444444444",
+    "dddddddd-1111-2222-3333-444444444444",
+  ], "only the generate-endpoint clips, never the feed listing's older clips");
+});
+
 test("clickCreate reports not-started when no clips come back", async () => {
   const res = await clickCreate(stubPage(["about:blank", "https://suno.com/create"]));
   assert.equal(res.started, false);

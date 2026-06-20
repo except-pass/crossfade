@@ -126,7 +126,9 @@ export async function clickCreate(page, { screenshotPath } = {}) {
   const clips = new Map(); // id -> audio_url | null
   const onResp = async (resp) => {
     try {
-      if (!/generate|clip|feed|project/i.test(resp.url())) return;
+      // ONLY the generate endpoint — a feed/project/library listing returns every
+      // older song, and harvesting those would record the wrong clip ids for this run.
+      if (!/\/generate/i.test(resp.url())) return;
       if (!(resp.headers()["content-type"] || "").includes("json")) return;
       collectClips(await resp.json(), clips);
     } catch {
@@ -314,9 +316,18 @@ if (import.meta.url === `file://${process.argv[1]}`) {
         // --record: persist lineage + captured clips in the same step. Only record once
         // generation actually started — a not-started run shouldn't pollute the graph.
         if (args.includes("--record") && r.started) {
-          const rec = recordGeneratedSong(brief, r);
-          if (rec.skipped) console.log(`\n↳ not recorded — ${rec.message}`);
-          else console.log(`\n↳ recorded song #${rec.songId} (${rec.status}) — ${brief.title}`);
+          // Generation already succeeded here (credits spent, clips captured). A store
+          // write failure must NOT surface as "generation failed" and lose the clip ids.
+          try {
+            const rec = recordGeneratedSong(brief, r);
+            if (rec.skipped) console.log(`\n↳ not recorded — ${rec.message}`);
+            else console.log(`\n↳ recorded song #${rec.songId} (${rec.status}) — ${brief.title}`);
+          } catch (recErr) {
+            console.warn(
+              `\n↳ generated but NOT recorded — ${recErr.message}\n` +
+                `   clip ids: ${(r.clipIds || []).join(", ")} — fix the brief's _nodeIds and record by hand.`
+            );
+          }
         } else if (args.includes("--record") && !r.started && !args.includes("--fill-only")) {
           console.log("\n↳ not recorded — generation didn't start; fix and re-run, then --record.");
         }
