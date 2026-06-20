@@ -45,6 +45,24 @@ nodes ──sample──▶ combo ──DJ writes──▶ brief ──browser�
 
 ---
 
+## Make your first song (let your agent drive)
+
+The painless path: hand this to a coding agent (Claude Code, Cursor, or similar). It
+will clone the repo and walk you through everything — installing, connecting to your
+logged-in Chrome, seeding your favorite bands, and generating your first song — pausing
+whenever it needs you. **Copy, paste, go:**
+
+> Clone https://github.com/except-pass/crossfade, then open `INSTALL.md` and walk me
+> through it end to end — installing, connecting to my logged-in Chrome, seeding a few
+> of my favorite bands, and generating my first song. Use the repo's `/dj` skill to
+> write the song. Pause and ask me whenever you need something on my end (starting
+> Chrome, signing into Suno, solving a captcha). Don't stop until a song is in my Suno feed.
+
+That runs the [`INSTALL.md`](INSTALL.md) runbook. Prefer to do it by hand? The manual
+walkthrough is further down.
+
+---
+
 ## Requirements
 
 - **Node.js ≥ 18**
@@ -108,7 +126,7 @@ node src/suno.mjs --check
 
 ---
 
-## Make your first song
+## Make your first song (manually)
 
 **1. Seed a few nodes.**
 
