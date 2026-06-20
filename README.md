@@ -147,10 +147,11 @@ node bin/crossfade.mjs sample
 #   mutators: (none)
 ```
 
-**3. Write the brief.** Today *you* are the DJ (an automated DJ agent is on the
-roadmap). Copy a brief and edit it — the only rule is **no real band names in the
-fields you send to Suno**; translate the sound into descriptors. A full worked
-example lives in [`briefs/EXAMPLE.json`](briefs/EXAMPLE.json). The shape:
+**3. Let the DJ write the brief.** The [`/dj`](#skills) skill is the DJ — hand it the
+combo and it writes the brief: concept, lyrics, style, and title, translating the real
+band names into pure sonic descriptors (the one hard rule — **no real band names in the
+fields that reach Suno**). It saves a JSON brief under `briefs/`; a worked example lives
+in [`briefs/EXAMPLE.json`](briefs/EXAMPLE.json). The shape:
 
 ```json
 {
@@ -164,35 +165,22 @@ example lives in [`briefs/EXAMPLE.json`](briefs/EXAMPLE.json). The shape:
 `tags` is the musical style, `prompt` is the lyrics (use Suno's `[Section]` tags), and
 `title` is the title.
 
-**4. Generate it.**
+**4. Generate it — and record the lineage in one step.**
 
 ```bash
-node src/suno.mjs briefs/EXAMPLE.json
+node src/suno.mjs briefs/EXAMPLE.json --record
 ```
 
 crossfade switches your Suno tab to **Advanced**, fills lyrics/style/title, and clicks
-**Create**. If Suno shows an hCaptcha, solve it in the browser — generation starts
-the moment you do. Two takes land in your feed.
-
-**5. Record the lineage** so the graph remembers it (and never repeats the combo).
-A one-shot `burst` command that does steps 2–5 together is coming; for now:
-
-```bash
-node --input-type=module -e '
-import { openStore } from "./src/store.mjs";
-import { config } from "./src/config.mjs";
-const s = openStore(config.dbPath);
-const id = s.recordSong({
-  title: "Same Bar, Same Stool",
-  tags: "…", prompt: "…",
-  inspirationNodeIds: [/* the node ids from your draw */],
-});
-console.log("recorded song", id);
-s.close();'
-```
+**Create**. If Suno shows an hCaptcha, solve it in the browser — generation starts the
+moment you do. Two takes land in your feed. With `--record`, the song's clip ids and its
+inspiration **lineage** are written back into the graph (so the combo never repeats) the
+instant generation actually starts — a drifted form or silent no-op never pollutes the
+graph. (`/dj` runs this for you.)
 
 That's the whole loop. Seed more nodes, sample again, and the station keeps reaching
-into fresh corners of your taste.
+into fresh corners of your taste. The `/dj` skill does steps 2–4 (draw, write, generate,
+record) for you in one go.
 
 ---
 
@@ -250,21 +238,6 @@ CDP_URL=http://127.0.0.1:9223 node src/suno.mjs --check
 
 The full recipe, including the Windows-firewall and IPv6 gotchas that bite, is in
 [`CDP-PLUMBING.md`](CDP-PLUMBING.md). This is the exception, not the norm.
-
----
-
-## Status & roadmap
-
-Working today: the SQLite graph, the combo sampler, the `node`/`sample` CLI, and the
-CDP generation driver — all tested. Songs are real and in the wild.
-
-Next up:
-- **`burst`** — one command for sample → brief → generate → record.
-- **The DJ as an agent** — automate brief-writing (and let you *talk* to the DJ),
-  so you don't hand-write each one.
-- **Ratings** — thumbs + notes feeding the sampler so it drifts toward your taste.
-
-Design notes and the implementation plan live in [`docs/`](docs/).
 
 ---
 
