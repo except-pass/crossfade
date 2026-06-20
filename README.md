@@ -221,6 +221,22 @@ the sampler never hands you the same combination twice.
 
 ---
 
+## Skills
+
+Two project skills (in `.agents/skills/`, discoverable as slash commands by Claude Code,
+Cursor, and friends) do the creative heavy lifting:
+
+- **`/dj`** — turns a sampled combo into a song brief (concept, lyrics, style, title),
+  translating real band names into pure sonic descriptors. The taste and the voice.
+- **`/muse`** — gets you unstuck on new nodes when the graph feels stale. It pulls from a
+  curated list of inspiration sources (PostSecret, the Dictionary of Obscure Sorrows,
+  Oblique Strategies, Hopper paintings, Missed Connections, film grammar…) and derives
+  candidate **themes, vibes, and mutators** — abstracted so they're specific but never
+  on-the-nose — for you to review before adding. The wells live in an editable
+  [`.agents/skills/muse/sources.md`](.agents/skills/muse/sources.md), so you can add your own.
+
+---
+
 ## Advanced: driving a browser on another machine
 
 If crossfade runs on a headless box but your logged-in Chrome lives on a laptop, you
