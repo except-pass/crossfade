@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { openStore, normalize, comboSignature, ROLES } from "../src/store.mjs";
+import { openStore, normalize, comboSignature, ROLES, containsName } from "../src/store.mjs";
 
 function freshStore() {
   return openStore(":memory:");
@@ -18,6 +18,25 @@ test("comboSignature is order-independent and dedupes", () => {
   assert.equal(comboSignature([3, 1, 2]), "1,2,3");
   assert.equal(comboSignature([2, 1, 3]), "1,2,3");
   assert.equal(comboSignature([1, 1, 2]), "1,2");
+});
+
+test("containsName matches whole words, not substrings or case", () => {
+  assert.equal(containsName("post-grunge radio rock, earnest vocals", "The National"), false);
+  assert.equal(containsName("it sounds like the National anthem", "The National"), true);
+  assert.equal(containsName("kisses and war stories", "Kiss"), false, "substring is not a match");
+  assert.equal(containsName("MATCHBOX 20 energy", "Matchbox 20"), true, "case-insensitive");
+  assert.equal(containsName("anything at all", ""), false);
+  assert.equal(containsName("", "X"), false);
+});
+
+test("anchorNames returns band/album names only", () => {
+  const s = freshStore();
+  s.addNode("seed", "band", "A");
+  s.addNode("seed", "album", "B");
+  s.addNode("seed", "theme", "a subject");
+  s.addNode("vibe", "vibe", "nostalgic");
+  assert.deepEqual(s.anchorNames().sort(), ["A", "B"]);
+  s.close();
 });
 
 test("ROLES are seed | vibe | mutator", () => {

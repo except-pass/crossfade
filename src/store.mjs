@@ -78,6 +78,20 @@ export function normalize(name) {
     .trim();
 }
 
+// Word-boundary, case-insensitive name match: does `text` contain `name` as a run
+// of whole words? Powers the name-leak guard (KTD-6) — catches "The National" /
+// "MATCHBOX 20" while NOT false-positiving on substrings ("kiss" inside "kisses").
+const words = (s) => String(s ?? "").toLowerCase().match(/[\p{L}\p{N}]+/gu) || [];
+export function containsName(text, name) {
+  const t = words(text);
+  const n = words(name);
+  if (!n.length) return false;
+  for (let i = 0; i + n.length <= t.length; i++) {
+    if (n.every((w, j) => t[i + j] === w)) return true;
+  }
+  return false;
+}
+
 // A combo signature is the unique, order-independent fingerprint of a node set.
 export function comboSignature(nodeIds) {
   return [...new Set(nodeIds.map(Number))].sort((a, b) => a - b).join(",");
@@ -211,6 +225,10 @@ export function openStore(dbPath = ":memory:") {
     // Nodes of a role with their lineage use_count — the sampler's input (novelty weighting).
     nodesByRole(role) {
       return q.nodesByRole.all(role);
+    },
+    // Real names of every band/album node — the inventory the name-leak guard checks against.
+    anchorNames() {
+      return q.allNodes.all().filter((n) => n.type === "band" || n.type === "album").map((n) => n.name);
     },
 
     // --- Combos (repeat-avoidance, R8/AE3) ---

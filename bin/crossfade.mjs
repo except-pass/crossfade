@@ -35,7 +35,7 @@ function fmtNode(n) {
   return `  [${n.id}] ${sub.padEnd(12)} ${n.name}`;
 }
 
-function cmdNode(args, store) {
+export function cmdNode(args, store) {
   const sub = args[0];
   if (sub === "add") {
     const role = args[1];
@@ -128,7 +128,7 @@ function cmdNode(args, store) {
   return 1;
 }
 
-function cmdSample(store) {
+export function cmdSample(store) {
   try {
     const c = sampleCombo(store);
     console.log("drew a combo:");
@@ -144,7 +144,7 @@ function cmdSample(store) {
   }
 }
 
-function main(argv) {
+export function main(argv) {
   const [cmd, ...rest] = argv;
 
   if (!cmd || cmd === "--help" || cmd === "-h" || cmd === "help") {
@@ -169,4 +169,7 @@ function main(argv) {
   }
 }
 
-process.exit(main(process.argv.slice(2)));
+// Only run as a CLI when invoked directly (importing for tests must not exit).
+if (import.meta.url === `file://${process.argv[1]}`) {
+  process.exit(main(process.argv.slice(2)));
+}

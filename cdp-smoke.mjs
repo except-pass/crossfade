@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // Plumbing smoke test: prove this remote box can DRIVE the user's browser over CDP
-// (through the SSH reverse tunnel on localhost:9222). No Suno, no captcha — just control.
+// (through the SSH reverse tunnel on 127.0.0.1:9222). No Suno, no captcha — just control.
 //
 //   node cdp-smoke.mjs
 //
@@ -8,7 +8,7 @@
 
 import { chromium } from "playwright-core";
 
-const CDP = process.env.CDP_URL || "http://localhost:9222";
+const CDP = process.env.CDP_URL || "http://127.0.0.1:9222";
 
 const browser = await chromium.connectOverCDP(CDP);
 console.log("✅ connected over CDP:", CDP);

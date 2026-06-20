@@ -174,6 +174,28 @@ if (import.meta.url === `file://${process.argv[1]}`) {
       process.exit(1);
     }
     const brief = JSON.parse(await readFile(briefPath, "utf8"));
+
+    // Name-leak guard (KTD-6): a real band/album name must never reach Suno. Check the
+    // fields against the brief's lineage anchors (or the whole inventory if it has none).
+    const { openStore, containsName } = await import("./store.mjs");
+    const store = openStore(config.dbPath);
+    const lineage = Array.isArray(brief._nodeIds)
+      ? brief._nodeIds.map((id) => store.getNode(id)).filter(Boolean)
+      : [];
+    const anchors = lineage.filter((n) => n.type === "band" || n.type === "album").map((n) => n.name);
+    const guardNames = anchors.length ? anchors : store.anchorNames();
+    store.close();
+    for (const field of ["tags", "prompt", "title"]) {
+      const hit = guardNames.find((name) => containsName(brief[field], name));
+      if (hit) {
+        console.error(
+          `✋ name-leak guard: "${hit}" appears in the brief's ${field} — Suno blocks real band names. ` +
+            `Translate it to sonic descriptors and retry.`
+        );
+        process.exit(2);
+      }
+    }
+
     const screenshotPath = new URL("../gen-suno-harness.png", import.meta.url).pathname;
     generateSong(brief, { fillOnly: args.includes("--fill-only"), screenshotPath })
       .then((r) => {

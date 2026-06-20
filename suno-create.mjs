@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // Click Create on the filled Advanced form, then report whether an hCaptcha appeared.
 import { chromium } from "playwright-core";
-const CDP = process.env.CDP_URL || "http://localhost:9223";
+const CDP = process.env.CDP_URL || "http://127.0.0.1:9223";
 const browser = await chromium.connectOverCDP(CDP);
 const ctx = browser.contexts()[0];
 const page = ctx.pages().find(p => p.url().includes("suno.com/create"));

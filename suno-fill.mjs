@@ -2,7 +2,7 @@
 // Fill the Advanced create form (lyrics + styles + title) from song.json. Does NOT click Create.
 import { chromium } from "playwright-core";
 import { readFile } from "node:fs/promises";
-const CDP = process.env.CDP_URL || "http://localhost:9223";
+const CDP = process.env.CDP_URL || "http://127.0.0.1:9223";
 const song = JSON.parse(await readFile(new URL("./song.json", import.meta.url), "utf8"));
 
 const browser = await chromium.connectOverCDP(CDP);
