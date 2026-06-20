@@ -13,8 +13,7 @@ generates it in your Suno feed — recording exactly where every song came from.
 
 *Songs come from draws like "[two bands you love] × a voicemail you never deleted,
 wry and self-deprecating." The styles Suno sees are pure sonic descriptors — it blocks
-real band names, so crossfade translates them. Your graph stays your own; nothing in
-this repo ships with anyone's taste.*
+real band names, so crossfade translates them.*
 
 ---
 
